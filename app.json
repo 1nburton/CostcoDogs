@@ -16,7 +16,10 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.nickburton.costcodogs"
+      "bundleIdentifier": "com.nickburton.costcodogs",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.nickburton.costcodogs"

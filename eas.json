@@ -1,0 +1,19 @@
+{
+  "cli": {
+    "version": ">= 5.0.0"
+  },
+  "build": {
+    "production": {
+      "ios": {
+        "credentialsSource": "remote"
+      }
+    }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "ascAppId": "$(EXPO_ASC_APP_ID)"
+      }
+    }
+  }
+}
