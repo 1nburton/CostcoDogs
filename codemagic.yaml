@@ -40,10 +40,20 @@ workflows:
       - name: EAS build iOS
         script: |
           #!/usr/bin/env bash
+          export EXPO_TOKEN="${EXPO_TOKEN:-$EXPO_CLI_AUTH_TOKEN}"
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo "Missing Expo token: set EXPO_TOKEN (or EXPO_CLI_AUTH_TOKEN) in Codemagic group costco_dogs_secrets"
+            exit 1
+          fi
           npx --yes eas-cli@latest build --platform ios --non-interactive --wait
 
       - name: Submit to App Store Connect
         script: |
+          export EXPO_TOKEN="${EXPO_TOKEN:-$EXPO_CLI_AUTH_TOKEN}"
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo "Missing Expo token: set EXPO_TOKEN (or EXPO_CLI_AUTH_TOKEN) in Codemagic group costco_dogs_secrets"
+            exit 1
+          fi
           npx --yes eas-cli@latest submit --platform ios --latest --non-interactive --apple-id "$EXPO_APPLE_ID" --asc-app-id "$EXPO_ASC_APP_ID"
 
     artifacts:
