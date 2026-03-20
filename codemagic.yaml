@@ -40,11 +40,11 @@ workflows:
       - name: EAS build iOS
         script: |
           #!/usr/bin/env bash
-          eas build --platform ios --non-interactive --wait
+          npx --yes eas-cli@latest build --platform ios --non-interactive --wait
 
       - name: Submit to App Store Connect
         script: |
-          eas submit --platform ios --latest --non-interactive --apple-id "$EXPO_APPLE_ID" --asc-app-id "$EXPO_ASC_APP_ID"
+          npx --yes eas-cli@latest submit --platform ios --latest --non-interactive --apple-id "$EXPO_APPLE_ID" --asc-app-id "$EXPO_ASC_APP_ID"
 
     artifacts:
       - "./build/**"
