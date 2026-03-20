@@ -38,7 +38,9 @@ workflows:
         script: npm install
 
       - name: EAS build iOS
-        script: eas build --platform ios --non-interactive --wait
+        script: |
+          #!/usr/bin/env bash
+          eas build --platform ios --non-interactive --wait
 
       - name: Submit to App Store Connect
         script: |
