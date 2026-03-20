@@ -1,10 +1,6 @@
 workflows:
   default-workflow:
     name: Costco Dogs CI
-    trigger:
-      event:
-        - push
-        - pull_request
 
     environment:
       vars:
@@ -38,9 +34,6 @@ workflows:
 
   eas-build:
     name: Costco Dogs EAS Build
-    trigger:
-      event:
-        - tag
 
     environment:
       vars:
