@@ -26,8 +26,6 @@ workflows:
 
     environment:
       node: 20
-      groups:
-        - costco_dogs_secrets
 
     cache:
       cache_paths:
