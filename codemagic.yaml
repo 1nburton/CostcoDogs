@@ -1,0 +1,55 @@
+workflows:
+  default-workflow:
+    name: Costco Dogs CI
+    triggered_by: [push, merge_request_created]
+
+    environment:
+      vars:
+        NODE_VERSION: 20
+
+    scripts:
+      - name: Checkout repository
+        script: echo "Code checked out by Codemagic"
+
+      - name: Set up Node.js
+        script: |
+          curl -sL https://deb.nodesource.com/setup_${NODE_VERSION}.x | sudo -E bash -
+          sudo apt install -y nodejs
+          node --version
+          npm --version
+
+      - name: Install dependencies
+        script: npm install
+
+      - name: Lint project
+        script: npx eslint . --ext .js,.jsx --max-warnings=0
+
+      - name: Run tests
+        script: npm test || true
+
+      - name: Build Expo web
+        script: npm run web
+
+    artifacts:
+      - web-build/**
+
+  eas-build:
+    name: Costco Dogs EAS Build
+    triggered_by: [tag]
+
+    environment:
+      vars:
+        EXPO_CLI_AUTH_TOKEN: Encrypted(...) # set in Codemagic settings
+
+    scripts:
+      - name: Install dependencies
+        script: npm install
+
+      - name: EAS build iOS
+        script: eas build --platform ios --non-interactive
+
+      - name: EAS build Android
+        script: eas build --platform android --non-interactive
+
+    artifacts:
+      - "./build/**"
