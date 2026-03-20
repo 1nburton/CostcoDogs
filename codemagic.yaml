@@ -4,20 +4,13 @@ workflows:
     max_build_duration: 120
 
     environment:
-      vars:
-        NODE_VERSION: 20
+      node: 20
+
+    cache:
+      cache_paths:
+        - $CM_BUILD_DIR/node_modules
 
     scripts:
-      - name: Checkout repository
-        script: echo "Code checked out by Codemagic"
-
-      - name: Set up Node.js
-        script: |
-          curl -sL https://deb.nodesource.com/setup_${NODE_VERSION}.x | sudo -E bash -
-          sudo apt install -y nodejs
-          node --version
-          npm --version
-
       - name: Install dependencies
         script: npm install
 
@@ -33,13 +26,18 @@ workflows:
     artifacts:
       - web-build/**
 
-  eas-build:
-    name: Costco Dogs EAS Build
+  ios-build:
+    name: Costco Dogs iOS Build
     max_build_duration: 120
 
     environment:
+      node: 20
       vars:
         EXPO_CLI_AUTH_TOKEN: Encrypted(...) # set in Codemagic settings
+
+    cache:
+      cache_paths:
+        - $CM_BUILD_DIR/node_modules
 
     scripts:
       - name: Install dependencies
@@ -47,9 +45,6 @@ workflows:
 
       - name: EAS build iOS
         script: eas build --platform ios --non-interactive
-
-      - name: EAS build Android
-        script: eas build --platform android --non-interactive
 
     artifacts:
       - "./build/**"
