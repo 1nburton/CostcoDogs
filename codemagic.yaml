@@ -45,11 +45,15 @@ workflows:
             echo "Missing Expo token: set EXPO_TOKEN (or EXPO_CLI_AUTH_TOKEN) in Codemagic group costco_dogs_secrets"
             exit 1
           fi
-          if [ -z "$EAS_PROJECT_ID" ]; then
-            echo "Missing EAS_PROJECT_ID in Codemagic group costco_dogs_secrets"
-            exit 1
+          if [ -n "$EAS_PROJECT_ID" ]; then
+            npx --yes eas-cli@latest init --id "$EAS_PROJECT_ID" --force --non-interactive
+          else
+            echo "EAS_PROJECT_ID not set, attempting automatic EAS init"
+            npx --yes eas-cli@latest init --non-interactive || {
+              echo "Automatic EAS init failed. Set EAS_PROJECT_ID in Codemagic group costco_dogs_secrets and retry."
+              exit 1
+            }
           fi
-          npx --yes eas-cli@latest init --id "$EAS_PROJECT_ID" --force --non-interactive
 
       - name: EAS build iOS
         script: |
