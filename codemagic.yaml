@@ -72,7 +72,12 @@ workflows:
             echo "Missing Expo token: set EXPO_TOKEN (or EXPO_CLI_AUTH_TOKEN) in Codemagic group costco_dogs_secrets"
             exit 1
           fi
-          npx --yes eas-cli@latest submit --platform ios --latest --non-interactive --apple-id "$EXPO_APPLE_ID" --asc-app-id "$EXPO_ASC_APP_ID"
+          if [ -z "$EXPO_ASC_APP_ID" ]; then
+            echo "Missing EXPO_ASC_APP_ID in Codemagic group costco_dogs_secrets"
+            exit 1
+          fi
+          node -e "const fs=require('fs');const p='eas.json';const j=JSON.parse(fs.readFileSync(p,'utf8'));j.submit=j.submit||{};j.submit.production=j.submit.production||{};j.submit.production.ios=j.submit.production.ios||{};j.submit.production.ios.ascAppId=process.env.EXPO_ASC_APP_ID;fs.writeFileSync(p,JSON.stringify(j,null,2));"
+          npx --yes eas-cli@latest submit --platform ios --latest --profile production --non-interactive
 
     artifacts:
       - "./build/**"
