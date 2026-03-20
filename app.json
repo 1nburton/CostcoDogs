@@ -16,13 +16,14 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.yourcompany.costcodogs"
+      "bundleIdentifier": "com.nickburton.costcodogs"
     },
     "android": {
-      "package": "com.yourcompany.costcodogs"
+      "package": "com.nickburton.costcodogs"
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "privacy": "https://1nburton.github.io/CostcoDogs/"
   }
 }
