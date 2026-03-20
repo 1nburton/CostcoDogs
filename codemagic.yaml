@@ -20,12 +20,6 @@ workflows:
       - name: Run tests
         script: npm test || true
 
-      - name: Build Expo web
-        script: npm run web
-
-    artifacts:
-      - web-build/**
-
   ios-build:
     name: Costco Dogs iOS Build
     max_build_duration: 120
