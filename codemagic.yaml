@@ -28,6 +28,9 @@ workflows:
       node: 20
       vars:
         EXPO_CLI_AUTH_TOKEN: Encrypted(...) # set in Codemagic settings
+        EXPO_APPLE_ID: Encrypted(...) # Apple ID email used for App Store Connect
+        EXPO_APPLE_APP_SPECIFIC_PASSWORD: Encrypted(...) # App-specific password
+        EXPO_ASC_APP_ID: Encrypted(...) # Numeric App Store Connect app ID
 
     cache:
       cache_paths:
@@ -38,7 +41,11 @@ workflows:
         script: npm install
 
       - name: EAS build iOS
-        script: eas build --platform ios --non-interactive
+        script: eas build --platform ios --non-interactive --wait
+
+      - name: Submit to App Store Connect
+        script: |
+          eas submit --platform ios --latest --non-interactive --apple-id "$EXPO_APPLE_ID" --asc-app-id "$EXPO_ASC_APP_ID"
 
     artifacts:
       - "./build/**"
