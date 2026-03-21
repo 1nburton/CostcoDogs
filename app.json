@@ -27,6 +27,11 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "privacy": "https://1nburton.github.io/CostcoDogs/"
+    "extra": {
+      "privacyPolicyUrl": "https://1nburton.github.io/CostcoDogs/",
+      "eas": {
+        "projectId": "7a747925-091c-4b76-aec3-d1d2ac053685"
+      }
+    }
   }
 }
