@@ -87,11 +87,16 @@ function Splat(props) {
 // eslint-disable-next-line react/prop-types
 function CondimentDrop(props) {
   const { x, y, kind } = props;
-  const c = kind === 'ketchup'; const color = c ? '#cc1a1a' : '#f5c800'; const dark = c ? '#8b0000' : '#b8860b';
+  const c = kind === 'ketchup';
+  const color = c ? '#cc1a1a' : '#f5c800';
+  const dark = c ? '#8b0000' : '#b8860b';
+  const label = c ? '#f7b1b1' : '#fff1a8';
   return (
     <G x={x} y={y}>
-      <Path d={`M${CONDIMENT_W / 2},2 Q${CONDIMENT_W - 1},${CONDIMENT_H * 0.45} ${CONDIMENT_W / 2},${CONDIMENT_H - 1} Q1,${CONDIMENT_H * 0.45} ${CONDIMENT_W / 2},2 Z`} fill={color} />
-      <Circle cx={CONDIMENT_W / 2} cy={CONDIMENT_H - 2} r="2.2" fill={dark} opacity="0.6" />
+      <Rect x="6" y="1" width="6" height="3" rx="1" fill={dark} />
+      <Rect x="3" y="4" width="12" height="13" rx="3" fill={color} />
+      <Rect x="5" y="8" width="8" height="5" rx="2" fill={label} opacity="0.9" />
+      <Path d="M4,16 Q9,19 14,16" stroke={dark} strokeWidth="1" fill="none" opacity="0.6" />
     </G>
   );
 }
@@ -354,7 +359,7 @@ export default function CostcoDogs() {
         if (ny + CONDIMENT_H >= BUN_Y + 4 && ny <= BUN_Y + 32 && c.x + CONDIMENT_W > bx + 6 && c.x < bx + effBunW - 6) {
           condBonus += CONDIMENT_PTS;
           sessionStatsRef.current.condis += 1;
-          addPopup(c.kind === 'ketchup' ? '🍅 +25' : '💛 +25', c.x + CONDIMENT_W / 2, BUN_Y - 30);
+          addPopup(c.kind === 'ketchup' ? '🧴K +25' : '🧴M +25', c.x + CONDIMENT_W / 2, BUN_Y - 30);
           scream('BONUS POINTS!');
           continue;
         }
@@ -487,8 +492,8 @@ export default function CostcoDogs() {
         <View style={styles.rulesBox}>
           <View style={styles.ruleRow}><Text style={styles.ruleIcon}>👆</Text><Text style={styles.ruleText}>Drag your finger to move the bun.</Text></View>
           <View style={styles.ruleRow}><Text style={styles.ruleIcon}>🌭</Text><Text style={styles.ruleText}>Catch hot dogs for points and combos.</Text></View>
-          <View style={styles.ruleRow}><Text style={styles.ruleIcon}>🍅</Text><Text style={styles.ruleText}>Ketchup gives +25 bonus points.</Text></View>
-          <View style={styles.ruleRow}><Text style={styles.ruleIcon}>💛</Text><Text style={styles.ruleText}>Mustard gives +25 bonus points.</Text></View>
+          <View style={styles.ruleRow}><Text style={styles.ruleIcon}>🧴K</Text><Text style={styles.ruleText}>Ketchup bottle gives +25 bonus points.</Text></View>
+          <View style={styles.ruleRow}><Text style={styles.ruleIcon}>🧴M</Text><Text style={styles.ruleText}>Mustard bottle gives +25 bonus points.</Text></View>
           <View style={styles.ruleRow}><Text style={styles.ruleIcon}>💧</Text><Text style={styles.ruleText}>Water shrinks your bun for a few seconds.</Text></View>
           <View style={styles.ruleRow}><Text style={styles.ruleIcon}>🌶️</Text><Text style={styles.ruleText}>Avoid chili peppers or lose lives.</Text></View>
         </View>
