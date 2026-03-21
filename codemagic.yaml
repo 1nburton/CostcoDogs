@@ -77,6 +77,13 @@ workflows:
               exit 0
             fi
 
+            if grep -Eqi "used its iOS builds from the Free plan|No iOS builds left|build limit|settings/billing|will reset in" "$build_log"; then
+              echo "EAS iOS build quota reached for this Expo account."
+              echo "Action required: wait for reset date shown in logs or upgrade the Expo plan."
+              rm -f "$build_log"
+              exit 1
+            fi
+
             if grep -Eqi "Build request failed|build command failed|GraphQL request failed|Service Unavailable|429|502|503|504|timeout|timed out|ECONNRESET|ENOTFOUND|socket hang up" "$build_log"; then
               if [ "$attempt" -lt "$max_attempts" ]; then
                 sleep_seconds=$((attempt * 45))
