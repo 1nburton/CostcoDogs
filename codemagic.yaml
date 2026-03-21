@@ -55,6 +55,19 @@ workflows:
             }
           fi
 
+      - name: Increment buildNumber for unique EAS builds
+        script: |
+          #!/usr/bin/env bash
+          set -o pipefail
+          node -e "
+          const fs = require('fs');
+          const appJson = JSON.parse(fs.readFileSync('app.json', 'utf8'));
+          const currentBuild = parseInt(appJson.expo.ios.buildNumber || '1') + 1;
+          appJson.expo.ios.buildNumber = String(currentBuild);
+          fs.writeFileSync('app.json', JSON.stringify(appJson, null, 2));
+          console.log('Incremented buildNumber to: ' + currentBuild);
+          "
+
       - name: EAS build iOS
         script: |
           #!/usr/bin/env bash
