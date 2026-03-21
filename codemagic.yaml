@@ -58,12 +58,43 @@ workflows:
       - name: EAS build iOS
         script: |
           #!/usr/bin/env bash
+          set -o pipefail
           export EXPO_TOKEN="${EXPO_TOKEN:-$EXPO_CLI_AUTH_TOKEN}"
           if [ -z "$EXPO_TOKEN" ]; then
             echo "Missing Expo token: set EXPO_TOKEN (or EXPO_CLI_AUTH_TOKEN) in Codemagic group costco_dogs_secrets"
             exit 1
           fi
-          npx --yes eas-cli@latest build --platform ios --non-interactive --wait
+
+          max_attempts=4
+          attempt=1
+          while [ "$attempt" -le "$max_attempts" ]; do
+            echo "Build attempt $attempt/$max_attempts"
+            build_log=$(mktemp)
+
+            if npx --yes eas-cli@latest build --platform ios --non-interactive --wait 2>&1 | tee "$build_log"; then
+              echo "EAS build completed successfully."
+              rm -f "$build_log"
+              exit 0
+            fi
+
+            if grep -Eqi "Build request failed|build command failed|GraphQL request failed|Service Unavailable|429|502|503|504|timeout|timed out|ECONNRESET|ENOTFOUND|socket hang up" "$build_log"; then
+              if [ "$attempt" -lt "$max_attempts" ]; then
+                sleep_seconds=$((attempt * 45))
+                echo "Transient build API error detected. Retrying in ${sleep_seconds}s..."
+                rm -f "$build_log"
+                sleep "$sleep_seconds"
+                attempt=$((attempt + 1))
+                continue
+              fi
+            fi
+
+            echo "EAS build failed with a non-retryable error or retries exhausted."
+            rm -f "$build_log"
+            exit 1
+          done
+
+          echo "EAS build failed after $max_attempts attempts."
+          exit 1
 
       - name: Submit to App Store Connect
         script: |
