@@ -159,6 +159,8 @@ async function storageLargeSet(key, value) {
 export default function CostcoDogs() {
   const [screen, setScreen] = useState('auth');
   const [username, setUsername] = useState('');
+  const [authIdentifier, setAuthIdentifier] = useState('');
+  const [signupUsername, setSignupUsername] = useState('');
   const [authEmail, setAuthEmail] = useState('');
   const [authPassword, setAuthPassword] = useState('');
   const [authMode, setAuthMode] = useState('login');
@@ -228,38 +230,56 @@ export default function CostcoDogs() {
 
   const handleAuth = async () => {
     const email = authEmail.trim().toLowerCase();
+    const identifier = authIdentifier.trim().toLowerCase();
+    const rawSignupUsername = signupUsername.trim();
+    const cleanedSignupUsername = rawSignupUsername.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 16);
     const password = authPassword;
-    const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-    if (!validEmail) { setAuthError('Enter a valid email address'); return; }
     if (password.length < 6) { setAuthError('Password must be at least 6 characters'); return; }
 
     const users = (await storageLargeGet('costco:users')) || [];
-    const existing = users.find(u => u.email === email);
+    const existingByEmail = users.find(u => u.email === email);
 
     if (authMode === 'signup') {
-      if (existing) { setAuthError('Account already exists. Log in instead.'); return; }
-      const displayName = email.split('@')[0].slice(0, 16);
-      const nextUsers = [...users, { email, password, displayName }];
+      const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+      if (!validEmail) { setAuthError('Enter a valid email address'); return; }
+      if (cleanedSignupUsername.length < 2) { setAuthError('Username must be at least 2 characters'); return; }
+      const takenUsername = users.find(u => u.usernameLower === cleanedSignupUsername.toLowerCase());
+      if (existingByEmail) { setAuthError('Account already exists. Log in instead.'); return; }
+      if (takenUsername) { setAuthError('Username is already taken'); return; }
+      const nextUsers = [...users, {
+        email,
+        password,
+        username: cleanedSignupUsername,
+        usernameLower: cleanedSignupUsername.toLowerCase(),
+        displayName: cleanedSignupUsername,
+      }];
       await storageLargeSet('costco:users', nextUsers);
       await storageSet('costco:currentUserEmail', email);
-      setUsername(displayName);
+      setUsername(cleanedSignupUsername);
       setAccountEmail(email);
-      usernameRef.current = displayName;
+      usernameRef.current = cleanedSignupUsername;
+      setAuthIdentifier('');
+      setSignupUsername('');
       setAuthPassword('');
       setAuthError('');
       setScreen('idle');
       return;
     }
 
+    if (!identifier) { setAuthError('Enter username or email'); return; }
+    const existing = users.find(u => u.email === identifier || u.usernameLower === identifier);
+
     if (!existing || existing.password !== password) {
-      setAuthError('Incorrect email or password');
+      setAuthError('Incorrect username/email or password');
       return;
     }
 
-    await storageSet('costco:currentUserEmail', email);
-    setUsername(existing.displayName || email.split('@')[0]);
-    setAccountEmail(email);
-    usernameRef.current = existing.displayName || email.split('@')[0];
+    await storageSet('costco:currentUserEmail', existing.email);
+    setUsername(existing.displayName || existing.username || existing.email.split('@')[0]);
+    setAccountEmail(existing.email);
+    usernameRef.current = existing.displayName || existing.username || existing.email.split('@')[0];
+    setAuthIdentifier('');
+    setSignupUsername('');
     setAuthPassword('');
     setAuthError('');
     setScreen('idle');
@@ -270,6 +290,8 @@ export default function CostcoDogs() {
     setAccountEmail('');
     setUsername('');
     usernameRef.current = '';
+    setAuthIdentifier('');
+    setSignupUsername('');
     setAuthEmail('');
     setAuthPassword('');
     setAuthError('');
@@ -514,15 +536,23 @@ export default function CostcoDogs() {
   if (screen === 'auth') {
     return renderFramed((
       <View style={styles.screenContainer}>
+        <Text style={styles.titleIcon}>🌭</Text>
         <Text style={styles.title}>🌭 COSTCO DOGS</Text>
         <View style={styles.nameBox}>
           <Text style={styles.namePrompt}>{authMode === 'login' ? 'Log In' : 'Create Account'}</Text>
-          <TextInput style={styles.nameInput} placeholder="Email" value={authEmail} onChangeText={(t) => { setAuthEmail(t); setAuthError(''); }} autoCapitalize="none" keyboardType="email-address" autoCorrect={false} autoFocus />
+          {authMode === 'login' ? (
+            <TextInput style={styles.nameInput} placeholder="Username or Email" value={authIdentifier} onChangeText={(t) => { setAuthIdentifier(t); setAuthError(''); }} autoCapitalize="none" autoCorrect={false} autoFocus />
+          ) : (
+            <>
+              <TextInput style={styles.nameInput} placeholder="Username" value={signupUsername} onChangeText={(t) => { setSignupUsername(t); setAuthError(''); }} autoCapitalize="none" autoCorrect={false} autoFocus />
+              <TextInput style={styles.nameInput} placeholder="Email" value={authEmail} onChangeText={(t) => { setAuthEmail(t); setAuthError(''); }} autoCapitalize="none" keyboardType="email-address" autoCorrect={false} />
+            </>
+          )}
           <TextInput style={styles.nameInput} placeholder="Password" value={authPassword} onChangeText={(t) => { setAuthPassword(t); setAuthError(''); }} secureTextEntry />
           {authError && <Text style={styles.errorText}>{authError}</Text>}
           <Pressable style={styles.button} onPress={handleAuth}><Text style={styles.buttonText}>{authMode === 'login' ? 'LOG IN' : 'CREATE ACCOUNT'}</Text></Pressable>
           <Pressable style={[styles.button, styles.buttonSecondary]} onPress={() => { setAuthMode(authMode === 'login' ? 'signup' : 'login'); setAuthError(''); }}>
-            <Text style={styles.buttonText}>{authMode === 'login' ? 'Need an account? Sign up' : 'Already have an account? Log in'}</Text>
+            <Text style={[styles.buttonText, styles.buttonTextSecondary]}>{authMode === 'login' ? 'Need an account? Sign up' : 'Already have an account? Log in'}</Text>
           </Pressable>
         </View>
       </View>
@@ -532,15 +562,16 @@ export default function CostcoDogs() {
   if (screen === 'idle') {
     return renderFramed((
       <View style={styles.screenContainer}>
+        <Text style={styles.titleIcon}>🌭</Text>
         <Text style={styles.title}>🌭 COSTCO DOGS</Text>
         <View style={styles.infoBox}>
           <Text style={styles.greeting}>Hey {username}! 🌭</Text>
           <Text style={styles.subGreeting}>{accountEmail}</Text>
           <View style={styles.buttonColumn}>
             <Pressable style={[styles.button, styles.buttonFull]} onPress={() => setScreen('rules')}><Text style={styles.buttonText}>🌭 PLAY</Text></Pressable>
-            <Pressable style={[styles.button, styles.buttonSecondary, styles.buttonFull]} onPress={showBoard}><Text style={styles.buttonText}>🏆 BOARD</Text></Pressable>
-            <Pressable style={[styles.button, styles.buttonSecondary, styles.buttonFull]} onPress={() => setScreen('awards')}><Text style={styles.buttonText}>🏅 AWARDS</Text></Pressable>
-            <Pressable style={[styles.button, styles.buttonSecondary, styles.buttonFull]} onPress={handleLogout}><Text style={styles.buttonText}>🚪 LOG OUT</Text></Pressable>
+            <Pressable style={[styles.button, styles.buttonSecondary, styles.buttonFull]} onPress={showBoard}><Text style={[styles.buttonText, styles.buttonTextSecondary]}>🏆 BOARD</Text></Pressable>
+            <Pressable style={[styles.button, styles.buttonSecondary, styles.buttonFull]} onPress={() => setScreen('awards')}><Text style={[styles.buttonText, styles.buttonTextSecondary]}>🏅 AWARDS</Text></Pressable>
+            <Pressable style={[styles.button, styles.buttonSecondary, styles.buttonFull]} onPress={handleLogout}><Text style={[styles.buttonText, styles.buttonTextSecondary]}>🚪 LOG OUT</Text></Pressable>
           </View>
         </View>
       </View>
@@ -550,6 +581,7 @@ export default function CostcoDogs() {
   if (screen === 'rules') {
     return renderFramed((
       <View style={styles.screenContainer}>
+        <Text style={styles.titleIcon}>🌭</Text>
         <Text style={styles.title}>📜 HOW TO PLAY</Text>
         <View style={styles.rulesBox}>
           <View style={styles.ruleRow}><Text style={styles.ruleIcon}>👆</Text><Text style={styles.ruleText}>Drag your finger to move the bun.</Text></View>
@@ -561,7 +593,7 @@ export default function CostcoDogs() {
         </View>
         <View style={styles.buttonRow}>
           <Pressable style={styles.button} onPress={startGame}><Text style={styles.buttonText}>START GAME</Text></Pressable>
-          <Pressable style={[styles.button, styles.buttonSecondary]} onPress={() => setScreen('idle')}><Text style={styles.buttonText}>← BACK</Text></Pressable>
+          <Pressable style={[styles.button, styles.buttonSecondary]} onPress={() => setScreen('idle')}><Text style={[styles.buttonText, styles.buttonTextSecondary]}>← BACK</Text></Pressable>
         </View>
       </View>
     ));
@@ -593,7 +625,18 @@ export default function CostcoDogs() {
             {popups.map(p => <SvgText key={p.id} x={p.x} y={p.y} textAnchor="middle" fontSize="20" fill="#f5d020">{p.text}</SvgText>)}
             {combo >= 3 && screen === 'playing' && <SvgText x={GW - 40} y={20} fontSize="16" fill="#f5d020">🔥x{combo}</SvgText>}
           </Svg>
-          {steamActive && <View pointerEvents="none" style={styles.fogOverlay} />}
+          {steamActive && (
+            <View pointerEvents="none" style={styles.fogOverlay}>
+              <View style={[styles.steamPuff, { left: '8%', top: '10%' }]} />
+              <View style={[styles.steamPuff, styles.steamPuffLarge, { left: '32%', top: '18%' }]} />
+              <View style={[styles.steamPuff, { left: '62%', top: '12%' }]} />
+              <View style={[styles.steamPuff, styles.steamPuffLarge, { left: '16%', top: '44%' }]} />
+              <View style={[styles.steamPuff, { left: '48%', top: '40%' }]} />
+              <View style={[styles.steamPuff, styles.steamPuffLarge, { left: '70%', top: '56%' }]} />
+              <View style={[styles.steamPuff, { left: '24%', top: '70%' }]} />
+              <View style={[styles.steamPuff, { left: '58%', top: '74%' }]} />
+            </View>
+          )}
         </View>
         {screen === 'playing' && !!screamText && (
           <View pointerEvents="none" style={styles.screamWrap}>
@@ -607,7 +650,7 @@ export default function CostcoDogs() {
             {isNewPB && <Text style={styles.newPBText}>🏆 NEW PB!</Text>}
             <View style={styles.buttonRow}>
               <Pressable style={styles.button} onPress={startGame}><Text style={styles.buttonText}>PLAY AGAIN</Text></Pressable>
-              <Pressable style={[styles.button, styles.buttonSecondary]} onPress={showBoard}><Text style={styles.buttonText}>🏆</Text></Pressable>
+              <Pressable style={[styles.button, styles.buttonSecondary]} onPress={showBoard}><Text style={[styles.buttonText, styles.buttonTextSecondary]}>🏆</Text></Pressable>
             </View>
           </View>
         )}
@@ -618,6 +661,7 @@ export default function CostcoDogs() {
   if (screen === 'board') {
     return renderFramed((
       <View style={styles.screenContainer}>
+        <Text style={styles.titleIcon}>🌭</Text>
         <Text style={styles.title}>🏆 LEADERBOARD</Text>
         <ScrollView style={styles.leaderboard}>{boardLoading ? <Text style={styles.loadingText}>Loading...</Text> : leaderboard.length === 0 ? <Text style={styles.loadingText}>No scores yet!</Text> : leaderboard.map((e, i) => <View key={e.name} style={styles.leaderboardRow}><Text style={styles.leaderboardRank}>{i + 1}</Text><Text style={[styles.leaderboardName, e.name === username && styles.leaderboardMe]}>{e.name}</Text><Text style={styles.leaderboardScore}>{e.score}</Text></View>)}</ScrollView>
         <Pressable style={styles.button} onPress={() => setScreen('idle')}><Text style={styles.buttonText}>← BACK</Text></Pressable>
@@ -628,6 +672,7 @@ export default function CostcoDogs() {
   if (screen === 'awards') {
     return renderFramed((
       <View style={styles.screenContainer}>
+        <Text style={styles.titleIcon}>🌭</Text>
         <Text style={styles.title}>🏅 AWARDS</Text>
         <Text style={styles.achCount}>{unlockedAchs.size}/{ACHIEVEMENTS.length} unlocked</Text>
         <ScrollView style={styles.achievementsList}>{ACHIEVEMENTS.map(a => <View key={a.id} style={[styles.achievementItem, unlockedAchs.has(a.id) && styles.achievementEarned]}><Text style={styles.achName}>{a.name}</Text><Text style={styles.achDesc}>{unlockedAchs.has(a.id) ? a.desc : '???'}</Text>{unlockedAchs.has(a.id) && <Text style={styles.achBadge}>✓</Text>}</View>)}</ScrollView>
@@ -643,6 +688,7 @@ const styles = StyleSheet.create({
   appOuter: { flex: 1, backgroundColor: '#120800' },
   appShell: { flex: 1, margin: 6, borderColor: '#7a3800', borderWidth: 3, borderRadius: 14, overflow: 'hidden', backgroundColor: '#120800' },
   screenContainer: { flex: 1, backgroundColor: '#120800', alignItems: 'center', justifyContent: 'center', padding: 16 },
+  titleIcon: { fontSize: 58, marginBottom: 4 },
   title: { fontSize: 40, fontWeight: 'bold', color: '#f5d020', marginBottom: 20 },
   nameBox: { width: '90%', backgroundColor: '#1e0c00', borderColor: '#7a3800', borderWidth: 2, borderRadius: 18, padding: 28 },
   namePrompt: { fontSize: 24, color: '#f5d020', marginBottom: 12, textAlign: 'center' },
@@ -658,6 +704,7 @@ const styles = StyleSheet.create({
   button: { backgroundColor: '#f5d020', paddingVertical: 12, paddingHorizontal: 24, borderRadius: 50, alignItems: 'center', marginVertical: 8 },
   buttonSecondary: { backgroundColor: '#2a1000', borderColor: '#5a2800', borderWidth: 2 },
   buttonText: { color: '#1a0a00', fontSize: 16, fontWeight: 'bold' },
+  buttonTextSecondary: { color: '#ffffff' },
   buttonRow: { flexDirection: 'row', justifyContent: 'center', gap: 8, flexWrap: 'wrap' },
   buttonColumn: { flexDirection: 'column', alignItems: 'stretch', width: '100%', gap: 4 },
   buttonFull: { width: '100%' },
@@ -667,7 +714,9 @@ const styles = StyleSheet.create({
   livesContainer: { flexDirection: 'row', gap: 4 },
   arena: { flex: 1, width: '100%', backgroundColor: '#0a0300', borderColor: '#5a2800', borderWidth: 3, borderRadius: 16, overflow: 'hidden' },
   arenaShake: { transform: [{ translateX: 7 }] },
-  fogOverlay: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: 'rgba(210,210,210,0.24)' },
+  fogOverlay: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: 'rgba(226,226,226,0.56)' },
+  steamPuff: { position: 'absolute', width: 110, height: 80, borderRadius: 55, backgroundColor: 'rgba(235,235,235,0.34)' },
+  steamPuffLarge: { width: 150, height: 100, borderRadius: 75, backgroundColor: 'rgba(240,240,240,0.40)' },
   screamWrap: { position: 'absolute', top: 72, left: 0, right: 0, alignItems: 'center' },
   screamText: { fontSize: 30, fontWeight: 'bold', color: '#f5d020', backgroundColor: 'rgba(10,3,0,0.85)', borderColor: '#f5d020', borderWidth: 2, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 12 },
   overlay: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.82)', alignItems: 'center', justifyContent: 'center' },
