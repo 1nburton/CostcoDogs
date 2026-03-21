@@ -1,8 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { View, Text, ScrollView, TextInput, Pressable, StyleSheet, Dimensions } from 'react-native';
+import { View, Text, ScrollView, TextInput, Pressable, StyleSheet } from 'react-native';
 import { Svg, G, Rect, Circle, Path, Ellipse, Text as SvgText } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { StatusBar } from 'expo-status-bar';
 
 const GW = 480;
 const GH = 580;
@@ -26,22 +25,24 @@ const JALAP_H = 26;
 const STEAM_DURATION = 3000;
 
 const ACHIEVEMENTS = [
-  { id: "first_catch", name: "Welcome to Costco", desc: "Catch your very first hot dog", check: s => s.caught >= 1 },
-  { id: "combo_5", name: "Five Alarm Fire", desc: "Build a 5x combo streak", check: s => s.maxCombo >= 5 },
-  { id: "combo_10", name: "Unstoppable", desc: "Build a 10x combo streak", check: s => s.maxCombo >= 10 },
-  { id: "score_100", name: "Century Dog", desc: "Score 100 points in one game", check: s => s.score >= 100 },
-  { id: "score_500", name: "Rolled in Mustard", desc: "Score 500 points in one game", check: s => s.score >= 500 },
-  { id: "score_1000", name: "Hot Dog Hero", desc: "Score 1000 points in one game", check: s => s.score >= 1000 },
-  { id: "catch_50", name: "Hot Dog Hoarder", desc: "Catch 50 hot dogs in one game", check: s => s.caught >= 50 },
-  { id: "condiment_5", name: "Condiment Connoisseur", desc: "Catch 5 condiment drops in one game", check: s => s.condis >= 5 },
-  { id: "dodge_chili", name: "Too Cool for Chili", desc: "Dodge 5 chili peppers in one game", check: s => s.chiliDodged >= 5 },
-  { id: "soaked_3", name: "Soggy Legend", desc: "Get soaked by 3 water drops in one game", check: s => s.waterHits >= 3 },
-  { id: "speed_max", name: "Speed Demon", desc: "Survive until the speed maxes out", check: s => s.speedMaxed },
-  { id: "perfect_200", name: "Pristine Buns", desc: "Score 200+ without missing a single dog", check: s => s.score >= 200 && s.missed === 0 },
+  { id: 'first_catch', name: 'Welcome to Costco', desc: 'Catch your very first hot dog', check: s => s.caught >= 1 },
+  { id: 'combo_5', name: 'Five Alarm Fire', desc: 'Build a 5x combo streak', check: s => s.maxCombo >= 5 },
+  { id: 'combo_10', name: 'Unstoppable', desc: 'Build a 10x combo streak', check: s => s.maxCombo >= 10 },
+  { id: 'score_100', name: 'Century Dog', desc: 'Score 100 points in one game', check: s => s.score >= 100 },
+  { id: 'score_500', name: 'Rolled in Mustard', desc: 'Score 500 points in one game', check: s => s.score >= 500 },
+  { id: 'score_1000', name: 'Hot Dog Hero', desc: 'Score 1000 points in one game', check: s => s.score >= 1000 },
+  { id: 'catch_50', name: 'Hot Dog Hoarder', desc: 'Catch 50 hot dogs in one game', check: s => s.caught >= 50 },
+  { id: 'condiment_5', name: 'Condiment Connoisseur', desc: 'Catch 5 condiment drops in one game', check: s => s.condis >= 5 },
+  { id: 'dodge_chili', name: 'Too Cool for Chili', desc: 'Dodge 5 chili peppers in one game', check: s => s.chiliDodged >= 5 },
+  { id: 'soaked_3', name: 'Soggy Legend', desc: 'Get soaked by 3 water drops in one game', check: s => s.waterHits >= 3 },
+  { id: 'speed_max', name: 'Speed Demon', desc: 'Survive until the speed maxes out', check: s => s.speedMaxed },
+  { id: 'perfect_200', name: 'Pristine Buns', desc: 'Score 200+ without missing a single dog', check: s => s.score >= 200 && s.missed === 0 },
 ];
 
-function HotDog({ x, y }) {
-  const W = DOG_W, H = DOG_H, cy = H / 2, r = H / 2 - 1;
+// eslint-disable-next-line react/prop-types
+function HotDog(props) {
+  const { x, y } = props;
+  const W = DOG_W; const H = DOG_H; const cy = H / 2; const r = H / 2 - 1;
   return (
     <G x={x} y={y}>
       <Rect x="5" y="1" width={W - 10} height={H - 2} rx={r} fill="#9a2818" />
@@ -53,8 +54,10 @@ function HotDog({ x, y }) {
   );
 }
 
-function Bun({ x, shrunk }) {
-  const W = shrunk ? BUN_W / 2 : BUN_W, seeds = shrunk ? [8, 18, 28] : [12, 24, 40, 56, 68];
+// eslint-disable-next-line react/prop-types
+function Bun(props) {
+  const { x, shrunk } = props;
+  const W = shrunk ? BUN_W / 2 : BUN_W; const seeds = shrunk ? [8, 18, 28] : [12, 24, 40, 56, 68];
   return (
     <G x={x} y={BUN_Y}>
       <Rect x="0" y="16" width={W} height="20" rx="10" fill="#bf7520" />
@@ -67,7 +70,9 @@ function Bun({ x, shrunk }) {
   );
 }
 
-function Splat({ x, y }) {
+// eslint-disable-next-line react/prop-types
+function Splat(props) {
+  const { x, y } = props;
   return (
     <G x={x} y={y} opacity="0.55">
       <Ellipse cx="0" cy="0" rx="22" ry="6" fill="#a83020" />
@@ -79,8 +84,10 @@ function Splat({ x, y }) {
   );
 }
 
-function CondimentDrop({ x, y, kind }) {
-  const c = kind === "ketchup", color = c ? "#cc1a1a" : "#f5c800", dark = c ? "#8b0000" : "#b8860b";
+// eslint-disable-next-line react/prop-types
+function CondimentDrop(props) {
+  const { x, y, kind } = props;
+  const c = kind === 'ketchup'; const color = c ? '#cc1a1a' : '#f5c800'; const dark = c ? '#8b0000' : '#b8860b';
   return (
     <G x={x} y={y}>
       <Path d={`M${CONDIMENT_W / 2},2 Q${CONDIMENT_W - 1},${CONDIMENT_H * 0.45} ${CONDIMENT_W / 2},${CONDIMENT_H - 1} Q1,${CONDIMENT_H * 0.45} ${CONDIMENT_W / 2},2 Z`} fill={color} />
@@ -89,7 +96,9 @@ function CondimentDrop({ x, y, kind }) {
   );
 }
 
-function WaterDrop({ x, y }) {
+// eslint-disable-next-line react/prop-types
+function WaterDrop(props) {
+  const { x, y } = props;
   return (
     <G x={x} y={y}>
       <Path d={`M${WATER_W / 2},1 Q${WATER_W - 1},${WATER_H * 0.42} ${WATER_W / 2},${WATER_H - 1} Q1,${WATER_H * 0.42} ${WATER_W / 2},1 Z`} fill="#1ea8e0" stroke="#60c8f0" strokeWidth="0.8" opacity="0.95" />
@@ -97,7 +106,9 @@ function WaterDrop({ x, y }) {
   );
 }
 
-function ChiliDrop({ x, y }) {
+// eslint-disable-next-line react/prop-types
+function ChiliDrop(props) {
+  const { x, y } = props;
   return (
     <G x={x} y={y}>
       <Path d="M7,7 Q9,4 12,4 Q15,4 13,7 Z" fill="#2d6a10" />
@@ -108,16 +119,36 @@ function ChiliDrop({ x, y }) {
 }
 
 async function storageGet(key) {
-  try { return await AsyncStorage.getItem(key); } catch { return null; }
+  try {
+    return await AsyncStorage.getItem(key);
+  } catch (e) {
+    return null;
+  }
 }
+
 async function storageSet(key, value) {
-  try { await AsyncStorage.setItem(key, value); } catch {}
+  try {
+    await AsyncStorage.setItem(key, value);
+  } catch (e) {
+    // Handle error silently
+  }
 }
+
 async function storageLargeGet(key) {
-  try { const v = await AsyncStorage.getItem(key); return v ? JSON.parse(v) : null; } catch { return null; }
+  try {
+    const v = await AsyncStorage.getItem(key);
+    return v ? JSON.parse(v) : null;
+  } catch (e) {
+    return null;
+  }
 }
+
 async function storageLargeSet(key, value) {
-  try { await AsyncStorage.setItem(key, JSON.stringify(value)); } catch {}
+  try {
+    await AsyncStorage.setItem(key, JSON.stringify(value));
+  } catch (e) {
+    // Handle error silently
+  }
 }
 
 export default function CostcoDogs() {
@@ -133,7 +164,6 @@ export default function CostcoDogs() {
   const [combo, setCombo] = useState(0);
   const [shake, setShake] = useState(false);
   const [popups, setPopups] = useState([]);
-  const [speedLabel, setSpeedLabel] = useState(BASE_SPEED.toFixed(1));
   const [personalBest, setPersonalBest] = useState(0);
   const [leaderboard, setLeaderboard] = useState([]);
   const [boardLoading, setBoardLoading] = useState(false);
@@ -141,15 +171,13 @@ export default function CostcoDogs() {
   const [renderWater, setRenderWater] = useState([]);
   const [bunShrunk, setBunShrunk] = useState(false);
   const [renderJala, setRenderJala] = useState([]);
-  const [steaming, setSteaming] = useState(false);
   const [unlockedAchs, setUnlockedAchs] = useState(new Set());
-  const [newlyUnlocked, setNewlyUnlocked] = useState([]);
 
-  const dogsRef = useRef([]), condimentsRef = useRef([]), waterRef = useRef([]), bunShrunkRef = useRef(false);
-  const shrinkTimerRef = useRef(null), jalaRef = useRef([]), steamTimerRef = useRef(null);
-  const unlockedAchsRef = useRef(new Set()), sessionStatsRef = useRef({ caught: 0, maxCombo: 0, condis: 0, chiliDodged: 0, waterHits: 0, missed: 0, speedMaxed: false, score: 0 });
-  const bunXRef = useRef(GW / 2 - BUN_W / 2), scoreRef = useRef(0), livesRef = useRef(3), comboRef = useRef(0);
-  const spawnTick = useRef(0), elapsedRef = useRef(0), lastTimeRef = useRef(null), usernameRef = useRef(''), screenRef = useRef('name');
+  const dogsRef = useRef([]); const condimentsRef = useRef([]); const waterRef = useRef([]); const bunShrunkRef = useRef(false);
+  const shrinkTimerRef = useRef(null); const jalaRef = useRef([]); const steamTimerRef = useRef(null);
+  const unlockedAchsRef = useRef(new Set()); const sessionStatsRef = useRef({ caught: 0, maxCombo: 0, condis: 0, chiliDodged: 0, waterHits: 0, missed: 0, speedMaxed: false, score: 0 });
+  const bunXRef = useRef(GW / 2 - BUN_W / 2); const scoreRef = useRef(0); const livesRef = useRef(3); const comboRef = useRef(0);
+  const spawnTick = useRef(0); const elapsedRef = useRef(0); const lastTimeRef = useRef(null); const usernameRef = useRef(''); const screenRef = useRef('name');
 
   screenRef.current = screen;
   usernameRef.current = username;
@@ -160,7 +188,7 @@ export default function CostcoDogs() {
       const saved = await storageGet('costco:username');
       const pb = await storageGet('costco:pb');
       if (saved) { setUsername(saved); setInputName(saved); setScreen('idle'); }
-      if (pb) setPersonalBest(parseInt(pb));
+      if (pb) setPersonalBest(parseInt(pb, 10));
       const unlockedAchList = await storageLargeGet('costco:achievements');
       if (unlockedAchList && Array.isArray(unlockedAchList)) {
         const s = new Set(unlockedAchList);
@@ -171,7 +199,7 @@ export default function CostcoDogs() {
   }, []);
 
   const confirmName = async () => {
-    const n = inputName.trim().replace(/[^a-zA-Z0-9_\-]/g, '').slice(0, 16);
+    const n = inputName.trim().replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 16);
     if (n.length < 2) { setNameError('Min 2 characters'); return; }
     setUsername(n);
     usernameRef.current = n;
@@ -193,7 +221,7 @@ export default function CostcoDogs() {
     const idx = lb.findIndex(e => e.name === name);
     if (idx >= 0) { if (lb[idx].score < s) lb[idx].score = s; } else { lb.push({ name, score: s }); }
     await storageLargeSet('costco:leaderboard', lb);
-    const pb = parseInt(await storageGet('costco:pb') || '0');
+    const pb = parseInt(await storageGet('costco:pb') || '0', 10);
     if (s > pb) { await storageSet('costco:pb', String(s)); setPersonalBest(s); }
   }, []);
 
@@ -203,12 +231,10 @@ export default function CostcoDogs() {
     setBunShrunk(false); bunShrunkRef.current = false;
     if (shrinkTimerRef.current) clearTimeout(shrinkTimerRef.current);
     if (steamTimerRef.current) clearTimeout(steamTimerRef.current);
-    setSteaming(false);
     scoreRef.current = 0; livesRef.current = 3; comboRef.current = 0;
     spawnTick.current = 0; elapsedRef.current = 0; lastTimeRef.current = null;
     setRenderDogs([]); setSplats([]); setScore(0); setLives(3); setCombo(0); setPopups([]);
     setBunX(GW / 2 - BUN_W / 2); bunXRef.current = GW / 2 - BUN_W / 2;
-    setSpeedLabel(BASE_SPEED.toFixed(1)); setNewlyUnlocked([]);
     sessionStatsRef.current = { caught: 0, maxCombo: 0, condis: 0, chiliDodged: 0, waterHits: 0, missed: 0, speedMaxed: false, score: 0 };
     setScreen('playing');
   };
@@ -219,31 +245,30 @@ export default function CostcoDogs() {
     const gameLoop = () => {
       const now = performance.now();
       if (!lastTimeRef.current) lastTimeRef.current = now;
-      const dt = (now - lastTimeRef.current) / 1000, t = (elapsedRef.current += dt);
+      const dt = (now - lastTimeRef.current) / 1000; const t = (elapsedRef.current += dt);
       lastTimeRef.current = now;
       const speed = Math.min(BASE_SPEED + t * 0.06, 9.5);
       if (speed >= 9.5) sessionStatsRef.current.speedMaxed = true;
-      if (Math.floor(t * 2) % 2 === 0) setSpeedLabel(speed.toFixed(1));
 
       const spawnRate = Math.max(32, 105 - Math.floor(t / 7) * 7);
-      spawnTick.current++;
+      spawnTick.current += 1;
       if (spawnTick.current >= spawnRate) {
         spawnTick.current = 0;
         const burstCount = Math.random() < 0.08 ? 3 : Math.random() < 0.25 ? 2 : 1;
         const newDogs = [];
         const zoneW = (GW - DOG_W - 16) / burstCount;
-        for (let b = 0; b < burstCount; b++) {
+        for (let b = 0; b < burstCount; b += 1) {
           const x = Math.floor(b * zoneW + Math.random() * (zoneW - 8)) + 8;
           newDogs.push({ id: Math.random(), x, y: -DOG_H - 5 - b * 120 });
         }
         dogsRef.current = [...dogsRef.current, ...newDogs];
       }
 
-      const bx = bunXRef.current, effBunW = bunShrunkRef.current ? BUN_W / 2 : BUN_W;
+      const bx = bunXRef.current; const effBunW = bunShrunkRef.current ? BUN_W / 2 : BUN_W;
 
       // Water
       const waterRate = Math.max(350, 600 - Math.floor(t / 15) * 20);
-      if (useRef(0).current >= waterRate) {
+      if (spawnTick.current >= waterRate) {
         const wx = Math.floor(Math.random() * (GW - WATER_W - 16)) + 8;
         waterRef.current = [...waterRef.current, { id: Math.random(), x: wx, y: -WATER_H - 5 }];
       }
@@ -251,7 +276,7 @@ export default function CostcoDogs() {
       for (const w of waterRef.current) {
         const ny = w.y + WATER_SPEED;
         if (ny + WATER_H >= BUN_Y + 4 && ny <= BUN_Y + 32 && w.x + WATER_W > bx + 6 && w.x < bx + effBunW - 6) {
-          sessionStatsRef.current.waterHits++;
+          sessionStatsRef.current.waterHits += 1;
           bunShrunkRef.current = true;
           setBunShrunk(true);
           if (shrinkTimerRef.current) clearTimeout(shrinkTimerRef.current);
@@ -267,7 +292,7 @@ export default function CostcoDogs() {
 
       // Condiments
       const condRate = Math.max(180, 420 - Math.floor(t / 10) * 15);
-      if (useRef(0).current >= condRate) {
+      if (spawnTick.current >= condRate) {
         const kind = Math.random() < 0.5 ? 'ketchup' : 'mustard';
         const cx = Math.floor(Math.random() * (GW - CONDIMENT_W - 16)) + 8;
         condimentsRef.current = [...condimentsRef.current, { id: Math.random(), x: cx, y: -CONDIMENT_H - 5, kind }];
@@ -278,7 +303,7 @@ export default function CostcoDogs() {
         const ny = c.y + CONDIMENT_SPEED;
         if (ny + CONDIMENT_H >= BUN_Y + 4 && ny <= BUN_Y + 32 && c.x + CONDIMENT_W > bx + 6 && c.x < bx + effBunW - 6) {
           condBonus += CONDIMENT_PTS;
-          sessionStatsRef.current.condis++;
+          sessionStatsRef.current.condis += 1;
           setPopups(p => [...p.slice(-6), { id: Math.random(), x: c.x + CONDIMENT_W / 2, y: BUN_Y - 30, text: '🍅' }]);
           continue;
         }
@@ -290,7 +315,7 @@ export default function CostcoDogs() {
 
       // Chili
       const jalaRate = Math.max(400, 700 - Math.floor(t / 15) * 20);
-      if (useRef(0).current >= jalaRate) {
+      if (spawnTick.current >= jalaRate) {
         const jx = Math.floor(Math.random() * (GW - JALAP_W - 16)) + 8;
         jalaRef.current = [...jalaRef.current, { id: Math.random(), x: jx, y: -JALAP_H - 5 }];
       }
@@ -300,29 +325,30 @@ export default function CostcoDogs() {
         if (ny + JALAP_H >= BUN_Y + 4 && ny <= BUN_Y + 32 && j.x + JALAP_W > bx + 6 && j.x < bx + effBunW - 6) {
           livesRef.current = Math.max(0, livesRef.current - 1);
           setLives(livesRef.current);
-          setSteaming(true);
           if (steamTimerRef.current) clearTimeout(steamTimerRef.current);
-          steamTimerRef.current = setTimeout(() => setSteaming(false), STEAM_DURATION);
+          steamTimerRef.current = setTimeout(() => {
+            // Steam effect complete
+          }, STEAM_DURATION);
           setPopups(p => [...p.slice(-6), { id: Math.random(), x: j.x + JALAP_W / 2, y: BUN_Y - 30, text: '🌶️' }]);
           setShake(true);
           setTimeout(() => setShake(false), 500);
           if (livesRef.current <= 0) { setScreen('dead'); saveScore(scoreRef.current); return; }
           continue;
         }
-        if (ny > GH) { sessionStatsRef.current.chiliDodged++; continue; }
+        if (ny > GH) { sessionStatsRef.current.chiliDodged += 1; continue; }
         survJ.push({ ...j, y: ny });
       }
       jalaRef.current = survJ;
       setRenderJala([...survJ]);
 
       // Dogs
-      const splats = [];
+      const splatsList = [];
       const survD = [];
-      let caught = 0, missed = 0;
+      let caught = 0; let missed = 0;
       for (const d of dogsRef.current) {
         const ny = d.y + speed;
-        if (ny + DOG_H >= BUN_Y + 4 && ny <= BUN_Y + 32 && d.x + DOG_W > bx + 6 && d.x < bx + effBunW - 6) caught++;
-        else if (ny > GH) { splats.push({ id: d.id + 's', x: d.x + DOG_W / 2, y: GH - 16 }); missed++; }
+        if (ny + DOG_H >= BUN_Y + 4 && ny <= BUN_Y + 32 && d.x + DOG_W > bx + 6 && d.x < bx + effBunW - 6) caught += 1;
+        else if (ny > GH) { splatsList.push({ id: d.id + 's', x: d.x + DOG_W / 2, y: GH - 16 }); missed += 1; }
         else survD.push({ ...d, y: ny });
       }
       dogsRef.current = survD;
@@ -341,7 +367,7 @@ export default function CostcoDogs() {
         livesRef.current = Math.max(0, livesRef.current - missed);
         setCombo(0);
         setLives(livesRef.current);
-        if (splats.length) setSplats(prev => [...prev.slice(-7), ...splats]);
+        if (splatsList.length) setSplats(prev => [...prev.slice(-7), ...splatsList]);
         setShake(true);
         setTimeout(() => setShake(false), 380);
         if (livesRef.current <= 0) {
@@ -357,7 +383,6 @@ export default function CostcoDogs() {
           }
           if (newAch.length) {
             setUnlockedAchs(new Set(unlockedAchsRef.current));
-            setNewlyUnlocked(newAch);
             storageLargeSet('costco:achievements', Array.from(unlockedAchsRef.current));
           }
           return;
@@ -381,7 +406,7 @@ export default function CostcoDogs() {
           <Text style={styles.namePrompt}>Choose Your Name</Text>
           <TextInput style={styles.nameInput} placeholder="YourName123" value={inputName} onChangeText={(t) => { setInputName(t); setNameError(''); }} maxLength={16} autoFocus />
           {nameError && <Text style={styles.errorText}>{nameError}</Text>}
-          <Pressable style={styles.button} onPress={confirmName}><Text style={styles.buttonText}>LET'S GO →</Text></Pressable>
+          <Pressable style={styles.button} onPress={confirmName}><Text style={styles.buttonText}>LET&apos;S GO →</Text></Pressable>
         </View>
       </View>
     );
@@ -458,6 +483,8 @@ export default function CostcoDogs() {
       </View>
     );
   }
+
+  return null;
 }
 
 const styles = StyleSheet.create({
