@@ -581,16 +581,16 @@ export default function CostcoDogs() {
   if (screen === 'rules') {
     return renderFramed((
       <View style={styles.screenContainer}>
-        <Text style={styles.titleIcon}>🌭</Text>
-        <Text style={styles.title}>📜 HOW TO PLAY</Text>
         <View style={styles.rulesBox}>
           <View style={styles.ruleRow}><Text style={styles.ruleIcon}>👆</Text><Text style={styles.ruleText}>Drag your finger to move the bun.</Text></View>
           <View style={styles.ruleRow}><Text style={styles.ruleIcon}>🌭</Text><Text style={styles.ruleText}>Catch hot dogs for points and combos.</Text></View>
-          <View style={styles.ruleRow}><Text style={styles.ruleIcon}>🧴K</Text><Text style={styles.ruleText}>Ketchup bottle gives +25 bonus points.</Text></View>
-          <View style={styles.ruleRow}><Text style={styles.ruleIcon}>🧴M</Text><Text style={styles.ruleText}>Mustard bottle gives +25 bonus points.</Text></View>
+          <View style={styles.ruleRow}><View style={[styles.ruleBottle, styles.ruleBottleKetchup]}><View style={styles.ruleBottleCap} /></View><Text style={styles.ruleText}>Ketchup bottle gives +25 bonus points.</Text></View>
+          <View style={styles.ruleRow}><View style={[styles.ruleBottle, styles.ruleBottleMustard]}><View style={styles.ruleBottleCap} /></View><Text style={styles.ruleText}>Mustard bottle gives +25 bonus points.</Text></View>
           <View style={styles.ruleRow}><Text style={styles.ruleIcon}>💧</Text><Text style={styles.ruleText}>Water shrinks your bun for a few seconds.</Text></View>
           <View style={styles.ruleRow}><Text style={styles.ruleIcon}>🌶️</Text><Text style={styles.ruleText}>Avoid chili peppers or lose lives.</Text></View>
         </View>
+        <Text style={styles.titleIcon}>🌭</Text>
+        <Text style={styles.title}>📜 HOW TO PLAY</Text>
         <View style={styles.buttonRow}>
           <Pressable style={styles.button} onPress={startGame}><Text style={styles.buttonText}>START GAME</Text></Pressable>
           <Pressable style={[styles.button, styles.buttonSecondary]} onPress={() => setScreen('idle')}><Text style={[styles.buttonText, styles.buttonTextSecondary]}>← BACK</Text></Pressable>
@@ -651,6 +651,7 @@ export default function CostcoDogs() {
             <View style={styles.buttonRow}>
               <Pressable style={styles.button} onPress={startGame}><Text style={styles.buttonText}>PLAY AGAIN</Text></Pressable>
               <Pressable style={[styles.button, styles.buttonSecondary]} onPress={showBoard}><Text style={[styles.buttonText, styles.buttonTextSecondary]}>🏆</Text></Pressable>
+              <Pressable style={[styles.button, styles.buttonSecondary]} onPress={() => setScreen('idle')}><Text style={[styles.buttonText, styles.buttonTextSecondary]}>← BACK</Text></Pressable>
             </View>
           </View>
         )}
@@ -698,6 +699,10 @@ const styles = StyleSheet.create({
   rulesBox: { width: '92%', backgroundColor: '#1e0c00', borderColor: '#7a3800', borderWidth: 2, borderRadius: 18, padding: 18, marginBottom: 12 },
   ruleRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 10, gap: 10 },
   ruleIcon: { fontSize: 22, width: 28, textAlign: 'center' },
+  ruleBottle: { width: 18, height: 24, borderRadius: 5, marginTop: 1, marginLeft: 5, position: 'relative' },
+  ruleBottleCap: { position: 'absolute', top: -5, left: 5, width: 8, height: 6, borderRadius: 2, backgroundColor: '#3b2200' },
+  ruleBottleKetchup: { backgroundColor: '#cc1a1a', borderColor: '#8b0000', borderWidth: 1 },
+  ruleBottleMustard: { backgroundColor: '#f5c800', borderColor: '#b8860b', borderWidth: 1 },
   ruleText: { flex: 1, fontSize: 17, color: '#f5d020', lineHeight: 24 },
   greeting: { fontSize: 22, color: '#f5d020', marginBottom: 12, textAlign: 'center' },
   subGreeting: { fontSize: 13, color: '#c99252', marginBottom: 12, textAlign: 'center' },
