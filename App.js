@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { View, Text, ScrollView, TextInput, Pressable, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, TextInput, Pressable, StyleSheet, SafeAreaView } from 'react-native';
 import { Svg, G, Rect, Circle, Path, Ellipse, Text as SvgText } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -173,9 +173,11 @@ export default function CostcoDogs() {
   const [renderJala, setRenderJala] = useState([]);
   const [unlockedAchs, setUnlockedAchs] = useState(new Set());
   const [arenaWidth, setArenaWidth] = useState(0);
+  const [screamText, setScreamText] = useState('');
 
   const dogsRef = useRef([]); const condimentsRef = useRef([]); const waterRef = useRef([]); const bunShrunkRef = useRef(false);
   const shrinkTimerRef = useRef(null); const jalaRef = useRef([]); const steamTimerRef = useRef(null);
+  const screamTimerRef = useRef(null); const popupTimersRef = useRef([]);
   const unlockedAchsRef = useRef(new Set()); const sessionStatsRef = useRef({ caught: 0, maxCombo: 0, condis: 0, chiliDodged: 0, waterHits: 0, missed: 0, speedMaxed: false, score: 0 });
   const bunXRef = useRef(GW / 2 - BUN_W / 2); const scoreRef = useRef(0); const livesRef = useRef(3); const comboRef = useRef(0);
   const dogSpawnTick = useRef(0); const waterSpawnTick = useRef(0); const condSpawnTick = useRef(0); const jalaSpawnTick = useRef(0);
@@ -198,6 +200,13 @@ export default function CostcoDogs() {
         setUnlockedAchs(s);
       }
     })();
+  }, []);
+
+  useEffect(() => () => {
+    if (shrinkTimerRef.current) clearTimeout(shrinkTimerRef.current);
+    if (steamTimerRef.current) clearTimeout(steamTimerRef.current);
+    if (screamTimerRef.current) clearTimeout(screamTimerRef.current);
+    popupTimersRef.current.forEach(clearTimeout);
   }, []);
 
   const confirmName = async () => {
@@ -236,7 +245,7 @@ export default function CostcoDogs() {
     scoreRef.current = 0; livesRef.current = 3; comboRef.current = 0;
     dogSpawnTick.current = 0; waterSpawnTick.current = 0; condSpawnTick.current = 0; jalaSpawnTick.current = 0;
     elapsedRef.current = 0; lastTimeRef.current = null;
-    setRenderDogs([]); setSplats([]); setScore(0); setLives(3); setCombo(0); setPopups([]);
+    setRenderDogs([]); setSplats([]); setScore(0); setLives(3); setCombo(0); setPopups([]); setScreamText('');
     setBunX(GW / 2 - BUN_W / 2); bunXRef.current = GW / 2 - BUN_W / 2;
     sessionStatsRef.current = { caught: 0, maxCombo: 0, condis: 0, chiliDodged: 0, waterHits: 0, missed: 0, speedMaxed: false, score: 0 };
     setScreen('playing');
@@ -252,6 +261,28 @@ export default function CostcoDogs() {
     bunXRef.current = nextX;
     setBunX(nextX);
   }, [arenaWidth]);
+
+  const addPopup = useCallback((text, x, y, ttl = 900) => {
+    const id = `${Date.now()}-${Math.random()}`;
+    setPopups(p => [...p.slice(-6), { id, x, y, text }]);
+    const timer = setTimeout(() => {
+      setPopups(p => p.filter(item => item.id !== id));
+      popupTimersRef.current = popupTimersRef.current.filter(t => t !== timer);
+    }, ttl);
+    popupTimersRef.current.push(timer);
+  }, []);
+
+  const scream = useCallback((text) => {
+    setScreamText(text);
+    if (screamTimerRef.current) clearTimeout(screamTimerRef.current);
+    screamTimerRef.current = setTimeout(() => setScreamText(''), 1100);
+  }, []);
+
+  const renderFramed = useCallback((content) => (
+    <View style={styles.appShell}>
+      <SafeAreaView style={styles.safeArea}>{content}</SafeAreaView>
+    </View>
+  ), []);
 
   useEffect(() => {
     if (screen !== 'playing') return;
@@ -299,8 +330,8 @@ export default function CostcoDogs() {
           setBunShrunk(true);
           if (shrinkTimerRef.current) clearTimeout(shrinkTimerRef.current);
           shrinkTimerRef.current = setTimeout(() => { bunShrunkRef.current = false; setBunShrunk(false); }, WATER_DURATION);
-          setPopups(p => [...p.slice(-6), { id: Math.random(), x: w.x + WATER_W / 2, y: BUN_Y - 30, text: '💧' }]);
-          setTimeout(() => setPopups(p => p.slice(1)), 2000);
+          addPopup('💧', w.x + WATER_W / 2, BUN_Y - 30);
+          scream('SOAKED!');
           continue;
         }
         if (ny <= GH) survW.push({ ...w, y: ny });
@@ -323,7 +354,8 @@ export default function CostcoDogs() {
         if (ny + CONDIMENT_H >= BUN_Y + 4 && ny <= BUN_Y + 32 && c.x + CONDIMENT_W > bx + 6 && c.x < bx + effBunW - 6) {
           condBonus += CONDIMENT_PTS;
           sessionStatsRef.current.condis += 1;
-          setPopups(p => [...p.slice(-6), { id: Math.random(), x: c.x + CONDIMENT_W / 2, y: BUN_Y - 30, text: c.kind === 'ketchup' ? '🍅 +25' : '💛 +25' }]);
+          addPopup(c.kind === 'ketchup' ? '🍅 +25' : '💛 +25', c.x + CONDIMENT_W / 2, BUN_Y - 30);
+          scream('BONUS POINTS!');
           continue;
         }
         if (ny <= GH) survC.push({ ...c, y: ny });
@@ -349,7 +381,7 @@ export default function CostcoDogs() {
           steamTimerRef.current = setTimeout(() => {
             // Steam effect complete
           }, STEAM_DURATION);
-          setPopups(p => [...p.slice(-6), { id: Math.random(), x: j.x + JALAP_W / 2, y: BUN_Y - 30, text: '🌶️' }]);
+          addPopup('🌶️', j.x + JALAP_W / 2, BUN_Y - 30);
           setShake(true);
           setTimeout(() => setShake(false), 500);
           if (livesRef.current <= 0) { setScreen('dead'); saveScore(scoreRef.current); return; }
@@ -413,13 +445,13 @@ export default function CostcoDogs() {
     };
     animFrameId = requestAnimationFrame(gameLoop);
     return () => cancelAnimationFrame(animFrameId);
-  }, [screen, saveScore]);
+  }, [screen, saveScore, addPopup, scream]);
 
   const showBoard = async () => { await loadLeaderboard(); setScreen('board'); };
   const isNewPB = score > 0 && score >= personalBest;
 
   if (screen === 'name') {
-    return (
+    return renderFramed((
       <View style={styles.screenContainer}>
         <Text style={styles.title}>🌭 COSTCO DOGS</Text>
         <View style={styles.nameBox}>
@@ -429,11 +461,11 @@ export default function CostcoDogs() {
           <Pressable style={styles.button} onPress={confirmName}><Text style={styles.buttonText}>LET&apos;S GO →</Text></Pressable>
         </View>
       </View>
-    );
+    ));
   }
 
   if (screen === 'idle') {
-    return (
+    return renderFramed((
       <View style={styles.screenContainer}>
         <Text style={styles.title}>🌭 COSTCO DOGS</Text>
         <View style={styles.infoBox}>
@@ -445,30 +477,31 @@ export default function CostcoDogs() {
           </View>
         </View>
       </View>
-    );
+    ));
   }
 
   if (screen === 'rules') {
-    return (
+    return renderFramed((
       <View style={styles.screenContainer}>
         <Text style={styles.title}>📜 HOW TO PLAY</Text>
         <View style={styles.rulesBox}>
-          <Text style={styles.rulesLine}>Drag your finger inside the arena to move the bun.</Text>
-          <Text style={styles.rulesLine}>Catch hot dogs for points and combos.</Text>
-          <Text style={styles.rulesLine}>Catch ketchup and mustard drops for +25 bonus each.</Text>
-          <Text style={styles.rulesLine}>Avoid chili peppers or you lose lives.</Text>
-          <Text style={styles.rulesLine}>Water drops shrink your bun for a few seconds.</Text>
+          <View style={styles.ruleRow}><Text style={styles.ruleIcon}>👆</Text><Text style={styles.ruleText}>Drag your finger to move the bun.</Text></View>
+          <View style={styles.ruleRow}><Text style={styles.ruleIcon}>🌭</Text><Text style={styles.ruleText}>Catch hot dogs for points and combos.</Text></View>
+          <View style={styles.ruleRow}><Text style={styles.ruleIcon}>🍅</Text><Text style={styles.ruleText}>Ketchup gives +25 bonus points.</Text></View>
+          <View style={styles.ruleRow}><Text style={styles.ruleIcon}>💛</Text><Text style={styles.ruleText}>Mustard gives +25 bonus points.</Text></View>
+          <View style={styles.ruleRow}><Text style={styles.ruleIcon}>💧</Text><Text style={styles.ruleText}>Water shrinks your bun for a few seconds.</Text></View>
+          <View style={styles.ruleRow}><Text style={styles.ruleIcon}>🌶️</Text><Text style={styles.ruleText}>Avoid chili peppers or lose lives.</Text></View>
         </View>
         <View style={styles.buttonRow}>
           <Pressable style={styles.button} onPress={startGame}><Text style={styles.buttonText}>START GAME</Text></Pressable>
           <Pressable style={[styles.button, styles.buttonSecondary]} onPress={() => setScreen('idle')}><Text style={styles.buttonText}>← BACK</Text></Pressable>
         </View>
       </View>
-    );
+    ));
   }
 
   if (screen === 'playing' || screen === 'dead') {
-    return (
+    return renderFramed((
       <View style={styles.gameContainer}>
         <View style={styles.statsBar}>
           <Text style={styles.stat}>⬆️ {score}</Text>
@@ -494,6 +527,11 @@ export default function CostcoDogs() {
             {combo >= 3 && screen === 'playing' && <SvgText x={GW - 40} y={20} fontSize="16" fill="#f5d020">🔥x{combo}</SvgText>}
           </Svg>
         </View>
+        {screen === 'playing' && !!screamText && (
+          <View pointerEvents="none" style={styles.screamWrap}>
+            <Text style={styles.screamText}>{screamText}</Text>
+          </View>
+        )}
         {screen === 'dead' && (
           <View style={styles.overlay}>
             <Text style={styles.gameOverText}>GAME OVER</Text>
@@ -506,34 +544,36 @@ export default function CostcoDogs() {
           </View>
         )}
       </View>
-    );
+    ));
   }
 
   if (screen === 'board') {
-    return (
+    return renderFramed((
       <View style={styles.screenContainer}>
         <Text style={styles.title}>🏆 LEADERBOARD</Text>
         <ScrollView style={styles.leaderboard}>{boardLoading ? <Text style={styles.loadingText}>Loading...</Text> : leaderboard.length === 0 ? <Text style={styles.loadingText}>No scores yet!</Text> : leaderboard.map((e, i) => <View key={e.name} style={styles.leaderboardRow}><Text style={styles.leaderboardRank}>{i + 1}</Text><Text style={[styles.leaderboardName, e.name === username && styles.leaderboardMe]}>{e.name}</Text><Text style={styles.leaderboardScore}>{e.score}</Text></View>)}</ScrollView>
         <Pressable style={styles.button} onPress={() => setScreen('idle')}><Text style={styles.buttonText}>← BACK</Text></Pressable>
       </View>
-    );
+    ));
   }
 
   if (screen === 'awards') {
-    return (
+    return renderFramed((
       <View style={styles.screenContainer}>
         <Text style={styles.title}>🏅 AWARDS</Text>
         <Text style={styles.achCount}>{unlockedAchs.size}/{ACHIEVEMENTS.length} unlocked</Text>
         <ScrollView style={styles.achievementsList}>{ACHIEVEMENTS.map(a => <View key={a.id} style={[styles.achievementItem, unlockedAchs.has(a.id) && styles.achievementEarned]}><Text style={styles.achName}>{a.name}</Text><Text style={styles.achDesc}>{unlockedAchs.has(a.id) ? a.desc : '???'}</Text>{unlockedAchs.has(a.id) && <Text style={styles.achBadge}>✓</Text>}</View>)}</ScrollView>
         <Pressable style={styles.button} onPress={() => setScreen('idle')}><Text style={styles.buttonText}>← BACK</Text></Pressable>
       </View>
-    );
+    ));
   }
 
   return null;
 }
 
 const styles = StyleSheet.create({
+  appShell: { flex: 1, backgroundColor: '#120800', borderColor: '#7a3800', borderWidth: 4 },
+  safeArea: { flex: 1, backgroundColor: '#120800' },
   screenContainer: { flex: 1, backgroundColor: '#120800', alignItems: 'center', justifyContent: 'center', padding: 16 },
   title: { fontSize: 40, fontWeight: 'bold', color: '#f5d020', marginBottom: 20 },
   nameBox: { width: '90%', backgroundColor: '#1e0c00', borderColor: '#7a3800', borderWidth: 2, borderRadius: 18, padding: 28 },
@@ -542,7 +582,9 @@ const styles = StyleSheet.create({
   errorText: { color: '#ff6644', fontSize: 13, marginBottom: 12, textAlign: 'center' },
   infoBox: { width: '90%', backgroundColor: '#1e0c00', borderColor: '#7a3800', borderWidth: 2, borderRadius: 18, padding: 20 },
   rulesBox: { width: '92%', backgroundColor: '#1e0c00', borderColor: '#7a3800', borderWidth: 2, borderRadius: 18, padding: 18, marginBottom: 12 },
-  rulesLine: { fontSize: 17, color: '#f5d020', marginBottom: 10, lineHeight: 24 },
+  ruleRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 10, gap: 10 },
+  ruleIcon: { fontSize: 22, width: 28, textAlign: 'center' },
+  ruleText: { flex: 1, fontSize: 17, color: '#f5d020', lineHeight: 24 },
   greeting: { fontSize: 22, color: '#f5d020', marginBottom: 12, textAlign: 'center' },
   button: { backgroundColor: '#f5d020', paddingVertical: 12, paddingHorizontal: 24, borderRadius: 50, alignItems: 'center', marginVertical: 8 },
   buttonSecondary: { backgroundColor: '#2a1000', borderColor: '#5a2800', borderWidth: 2 },
@@ -554,6 +596,8 @@ const styles = StyleSheet.create({
   livesContainer: { flexDirection: 'row', gap: 4 },
   arena: { width: '95%', aspectRatio: GW / GH, backgroundColor: '#0a0300', borderColor: '#5a2800', borderWidth: 3, borderRadius: 16, overflow: 'hidden' },
   arenaShake: { transform: [{ translateX: 7 }] },
+  screamWrap: { position: 'absolute', top: 72, left: 0, right: 0, alignItems: 'center' },
+  screamText: { fontSize: 30, fontWeight: 'bold', color: '#f5d020', backgroundColor: 'rgba(10,3,0,0.85)', borderColor: '#f5d020', borderWidth: 2, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 12 },
   overlay: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.82)', alignItems: 'center', justifyContent: 'center' },
   gameOverText: { fontSize: 30, color: '#ff4444', marginBottom: 12, fontWeight: 'bold' },
   scoreText: { fontSize: 24, color: '#f5d020', marginBottom: 12, fontWeight: 'bold' },
