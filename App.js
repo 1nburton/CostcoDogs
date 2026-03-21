@@ -6,7 +6,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const GW = 480;
 const GH = 580;
 const BUN_W = 80;
-const BUN_Y = GH - 105;
+const BUN_Y = GH - 78;
 const DOG_W = 48;
 const DOG_H = 14;
 const BASE_SPEED = 3.5;
@@ -157,10 +157,13 @@ async function storageLargeSet(key, value) {
 }
 
 export default function CostcoDogs() {
-  const [screen, setScreen] = useState('name');
+  const [screen, setScreen] = useState('auth');
   const [username, setUsername] = useState('');
-  const [inputName, setInputName] = useState('');
-  const [nameError, setNameError] = useState('');
+  const [authEmail, setAuthEmail] = useState('');
+  const [authPassword, setAuthPassword] = useState('');
+  const [authMode, setAuthMode] = useState('login');
+  const [authError, setAuthError] = useState('');
+  const [accountEmail, setAccountEmail] = useState('');
   const [bunX, setBunX] = useState(GW / 2 - BUN_W / 2);
   const [renderDogs, setRenderDogs] = useState([]);
   const [splats, setSplats] = useState([]);
@@ -179,6 +182,7 @@ export default function CostcoDogs() {
   const [unlockedAchs, setUnlockedAchs] = useState(new Set());
   const [arenaWidth, setArenaWidth] = useState(0);
   const [screamText, setScreamText] = useState('');
+  const [steamActive, setSteamActive] = useState(false);
 
   const dogsRef = useRef([]); const condimentsRef = useRef([]); const waterRef = useRef([]); const bunShrunkRef = useRef(false);
   const shrinkTimerRef = useRef(null); const jalaRef = useRef([]); const steamTimerRef = useRef(null);
@@ -186,7 +190,7 @@ export default function CostcoDogs() {
   const unlockedAchsRef = useRef(new Set()); const sessionStatsRef = useRef({ caught: 0, maxCombo: 0, condis: 0, chiliDodged: 0, waterHits: 0, missed: 0, speedMaxed: false, score: 0 });
   const bunXRef = useRef(GW / 2 - BUN_W / 2); const scoreRef = useRef(0); const livesRef = useRef(3); const comboRef = useRef(0);
   const dogSpawnTick = useRef(0); const waterSpawnTick = useRef(0); const condSpawnTick = useRef(0); const jalaSpawnTick = useRef(0);
-  const elapsedRef = useRef(0); const lastTimeRef = useRef(null); const usernameRef = useRef(''); const screenRef = useRef('name');
+  const elapsedRef = useRef(0); const lastTimeRef = useRef(null); const usernameRef = useRef(''); const screenRef = useRef('auth');
 
   screenRef.current = screen;
   usernameRef.current = username;
@@ -194,9 +198,17 @@ export default function CostcoDogs() {
 
   useEffect(() => {
     (async () => {
-      const saved = await storageGet('costco:username');
       const pb = await storageGet('costco:pb');
-      if (saved) { setUsername(saved); setInputName(saved); setScreen('idle'); }
+      const savedCurrentEmail = await storageGet('costco:currentUserEmail');
+      if (savedCurrentEmail) {
+        const users = await storageLargeGet('costco:users');
+        const found = Array.isArray(users) ? users.find(u => u.email === savedCurrentEmail) : null;
+        if (found) {
+          setUsername(found.displayName || found.email.split('@')[0]);
+          setAccountEmail(found.email);
+          setScreen('idle');
+        }
+      }
       if (pb) setPersonalBest(parseInt(pb, 10));
       const unlockedAchList = await storageLargeGet('costco:achievements');
       if (unlockedAchList && Array.isArray(unlockedAchList)) {
@@ -214,13 +226,55 @@ export default function CostcoDogs() {
     popupTimersRef.current.forEach(clearTimeout);
   }, []);
 
-  const confirmName = async () => {
-    const n = inputName.trim().replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 16);
-    if (n.length < 2) { setNameError('Min 2 characters'); return; }
-    setUsername(n);
-    usernameRef.current = n;
-    await storageSet('costco:username', n);
+  const handleAuth = async () => {
+    const email = authEmail.trim().toLowerCase();
+    const password = authPassword;
+    const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    if (!validEmail) { setAuthError('Enter a valid email address'); return; }
+    if (password.length < 6) { setAuthError('Password must be at least 6 characters'); return; }
+
+    const users = (await storageLargeGet('costco:users')) || [];
+    const existing = users.find(u => u.email === email);
+
+    if (authMode === 'signup') {
+      if (existing) { setAuthError('Account already exists. Log in instead.'); return; }
+      const displayName = email.split('@')[0].slice(0, 16);
+      const nextUsers = [...users, { email, password, displayName }];
+      await storageLargeSet('costco:users', nextUsers);
+      await storageSet('costco:currentUserEmail', email);
+      setUsername(displayName);
+      setAccountEmail(email);
+      usernameRef.current = displayName;
+      setAuthPassword('');
+      setAuthError('');
+      setScreen('idle');
+      return;
+    }
+
+    if (!existing || existing.password !== password) {
+      setAuthError('Incorrect email or password');
+      return;
+    }
+
+    await storageSet('costco:currentUserEmail', email);
+    setUsername(existing.displayName || email.split('@')[0]);
+    setAccountEmail(email);
+    usernameRef.current = existing.displayName || email.split('@')[0];
+    setAuthPassword('');
+    setAuthError('');
     setScreen('idle');
+  };
+
+  const handleLogout = async () => {
+    await storageSet('costco:currentUserEmail', '');
+    setAccountEmail('');
+    setUsername('');
+    usernameRef.current = '';
+    setAuthEmail('');
+    setAuthPassword('');
+    setAuthError('');
+    setAuthMode('login');
+    setScreen('auth');
   };
 
   const loadLeaderboard = useCallback(async () => {
@@ -251,6 +305,7 @@ export default function CostcoDogs() {
     dogSpawnTick.current = 0; waterSpawnTick.current = 0; condSpawnTick.current = 0; jalaSpawnTick.current = 0;
     elapsedRef.current = 0; lastTimeRef.current = null;
     setRenderDogs([]); setSplats([]); setScore(0); setLives(3); setCombo(0); setPopups([]); setScreamText('');
+    setSteamActive(false);
     setBunX(GW / 2 - BUN_W / 2); bunXRef.current = GW / 2 - BUN_W / 2;
     sessionStatsRef.current = { caught: 0, maxCombo: 0, condis: 0, chiliDodged: 0, waterHits: 0, missed: 0, speedMaxed: false, score: 0 };
     setScreen('playing');
@@ -383,8 +438,9 @@ export default function CostcoDogs() {
           livesRef.current = Math.max(0, livesRef.current - 1);
           setLives(livesRef.current);
           if (steamTimerRef.current) clearTimeout(steamTimerRef.current);
+          setSteamActive(true);
           steamTimerRef.current = setTimeout(() => {
-            // Steam effect complete
+            setSteamActive(false);
           }, STEAM_DURATION);
           addPopup('🌶️', j.x + JALAP_W / 2, BUN_Y - 30);
           setShake(true);
@@ -455,15 +511,19 @@ export default function CostcoDogs() {
   const showBoard = async () => { await loadLeaderboard(); setScreen('board'); };
   const isNewPB = score > 0 && score >= personalBest;
 
-  if (screen === 'name') {
+  if (screen === 'auth') {
     return renderFramed((
       <View style={styles.screenContainer}>
         <Text style={styles.title}>🌭 COSTCO DOGS</Text>
         <View style={styles.nameBox}>
-          <Text style={styles.namePrompt}>Choose Your Name</Text>
-          <TextInput style={styles.nameInput} placeholder="YourName123" value={inputName} onChangeText={(t) => { setInputName(t); setNameError(''); }} maxLength={16} autoFocus />
-          {nameError && <Text style={styles.errorText}>{nameError}</Text>}
-          <Pressable style={styles.button} onPress={confirmName}><Text style={styles.buttonText}>LET&apos;S GO →</Text></Pressable>
+          <Text style={styles.namePrompt}>{authMode === 'login' ? 'Log In' : 'Create Account'}</Text>
+          <TextInput style={styles.nameInput} placeholder="Email" value={authEmail} onChangeText={(t) => { setAuthEmail(t); setAuthError(''); }} autoCapitalize="none" keyboardType="email-address" autoCorrect={false} autoFocus />
+          <TextInput style={styles.nameInput} placeholder="Password" value={authPassword} onChangeText={(t) => { setAuthPassword(t); setAuthError(''); }} secureTextEntry />
+          {authError && <Text style={styles.errorText}>{authError}</Text>}
+          <Pressable style={styles.button} onPress={handleAuth}><Text style={styles.buttonText}>{authMode === 'login' ? 'LOG IN' : 'CREATE ACCOUNT'}</Text></Pressable>
+          <Pressable style={[styles.button, styles.buttonSecondary]} onPress={() => { setAuthMode(authMode === 'login' ? 'signup' : 'login'); setAuthError(''); }}>
+            <Text style={styles.buttonText}>{authMode === 'login' ? 'Need an account? Sign up' : 'Already have an account? Log in'}</Text>
+          </Pressable>
         </View>
       </View>
     ));
@@ -475,10 +535,12 @@ export default function CostcoDogs() {
         <Text style={styles.title}>🌭 COSTCO DOGS</Text>
         <View style={styles.infoBox}>
           <Text style={styles.greeting}>Hey {username}! 🌭</Text>
+          <Text style={styles.subGreeting}>{accountEmail}</Text>
           <View style={styles.buttonColumn}>
             <Pressable style={[styles.button, styles.buttonFull]} onPress={() => setScreen('rules')}><Text style={styles.buttonText}>🌭 PLAY</Text></Pressable>
             <Pressable style={[styles.button, styles.buttonSecondary, styles.buttonFull]} onPress={showBoard}><Text style={styles.buttonText}>🏆 BOARD</Text></Pressable>
             <Pressable style={[styles.button, styles.buttonSecondary, styles.buttonFull]} onPress={() => setScreen('awards')}><Text style={styles.buttonText}>🏅 AWARDS</Text></Pressable>
+            <Pressable style={[styles.button, styles.buttonSecondary, styles.buttonFull]} onPress={handleLogout}><Text style={styles.buttonText}>🚪 LOG OUT</Text></Pressable>
           </View>
         </View>
       </View>
@@ -531,6 +593,7 @@ export default function CostcoDogs() {
             {popups.map(p => <SvgText key={p.id} x={p.x} y={p.y} textAnchor="middle" fontSize="20" fill="#f5d020">{p.text}</SvgText>)}
             {combo >= 3 && screen === 'playing' && <SvgText x={GW - 40} y={20} fontSize="16" fill="#f5d020">🔥x{combo}</SvgText>}
           </Svg>
+          {steamActive && <View pointerEvents="none" style={styles.fogOverlay} />}
         </View>
         {screen === 'playing' && !!screamText && (
           <View pointerEvents="none" style={styles.screamWrap}>
@@ -591,6 +654,7 @@ const styles = StyleSheet.create({
   ruleIcon: { fontSize: 22, width: 28, textAlign: 'center' },
   ruleText: { flex: 1, fontSize: 17, color: '#f5d020', lineHeight: 24 },
   greeting: { fontSize: 22, color: '#f5d020', marginBottom: 12, textAlign: 'center' },
+  subGreeting: { fontSize: 13, color: '#c99252', marginBottom: 12, textAlign: 'center' },
   button: { backgroundColor: '#f5d020', paddingVertical: 12, paddingHorizontal: 24, borderRadius: 50, alignItems: 'center', marginVertical: 8 },
   buttonSecondary: { backgroundColor: '#2a1000', borderColor: '#5a2800', borderWidth: 2 },
   buttonText: { color: '#1a0a00', fontSize: 16, fontWeight: 'bold' },
@@ -603,6 +667,7 @@ const styles = StyleSheet.create({
   livesContainer: { flexDirection: 'row', gap: 4 },
   arena: { flex: 1, width: '100%', backgroundColor: '#0a0300', borderColor: '#5a2800', borderWidth: 3, borderRadius: 16, overflow: 'hidden' },
   arenaShake: { transform: [{ translateX: 7 }] },
+  fogOverlay: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: 'rgba(210,210,210,0.24)' },
   screamWrap: { position: 'absolute', top: 72, left: 0, right: 0, alignItems: 'center' },
   screamText: { fontSize: 30, fontWeight: 'bold', color: '#f5d020', backgroundColor: 'rgba(10,3,0,0.85)', borderColor: '#f5d020', borderWidth: 2, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 12 },
   overlay: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.82)', alignItems: 'center', justifyContent: 'center' },
