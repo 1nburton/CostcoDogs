@@ -5,6 +5,7 @@
   },
   "build": {
     "production": {
+      "autoIncrement": true,
       "ios": {
         "credentialsSource": "remote",
         "image": "latest"
