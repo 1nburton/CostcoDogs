@@ -172,12 +172,14 @@ export default function CostcoDogs() {
   const [bunShrunk, setBunShrunk] = useState(false);
   const [renderJala, setRenderJala] = useState([]);
   const [unlockedAchs, setUnlockedAchs] = useState(new Set());
+  const [arenaWidth, setArenaWidth] = useState(0);
 
   const dogsRef = useRef([]); const condimentsRef = useRef([]); const waterRef = useRef([]); const bunShrunkRef = useRef(false);
   const shrinkTimerRef = useRef(null); const jalaRef = useRef([]); const steamTimerRef = useRef(null);
   const unlockedAchsRef = useRef(new Set()); const sessionStatsRef = useRef({ caught: 0, maxCombo: 0, condis: 0, chiliDodged: 0, waterHits: 0, missed: 0, speedMaxed: false, score: 0 });
   const bunXRef = useRef(GW / 2 - BUN_W / 2); const scoreRef = useRef(0); const livesRef = useRef(3); const comboRef = useRef(0);
-  const spawnTick = useRef(0); const elapsedRef = useRef(0); const lastTimeRef = useRef(null); const usernameRef = useRef(''); const screenRef = useRef('name');
+  const dogSpawnTick = useRef(0); const waterSpawnTick = useRef(0); const condSpawnTick = useRef(0); const jalaSpawnTick = useRef(0);
+  const elapsedRef = useRef(0); const lastTimeRef = useRef(null); const usernameRef = useRef(''); const screenRef = useRef('name');
 
   screenRef.current = screen;
   usernameRef.current = username;
@@ -232,12 +234,24 @@ export default function CostcoDogs() {
     if (shrinkTimerRef.current) clearTimeout(shrinkTimerRef.current);
     if (steamTimerRef.current) clearTimeout(steamTimerRef.current);
     scoreRef.current = 0; livesRef.current = 3; comboRef.current = 0;
-    spawnTick.current = 0; elapsedRef.current = 0; lastTimeRef.current = null;
+    dogSpawnTick.current = 0; waterSpawnTick.current = 0; condSpawnTick.current = 0; jalaSpawnTick.current = 0;
+    elapsedRef.current = 0; lastTimeRef.current = null;
     setRenderDogs([]); setSplats([]); setScore(0); setLives(3); setCombo(0); setPopups([]);
     setBunX(GW / 2 - BUN_W / 2); bunXRef.current = GW / 2 - BUN_W / 2;
     sessionStatsRef.current = { caught: 0, maxCombo: 0, condis: 0, chiliDodged: 0, waterHits: 0, missed: 0, speedMaxed: false, score: 0 };
     setScreen('playing');
   };
+
+  const moveBunToArenaX = useCallback((arenaX) => {
+    if (screenRef.current !== 'playing') return;
+    if (!arenaWidth) return;
+    const ratio = GW / arenaWidth;
+    const targetCenterX = arenaX * ratio;
+    const effBunW = bunShrunkRef.current ? BUN_W / 2 : BUN_W;
+    const nextX = Math.max(0, Math.min(GW - effBunW, targetCenterX - effBunW / 2));
+    bunXRef.current = nextX;
+    setBunX(nextX);
+  }, [arenaWidth]);
 
   useEffect(() => {
     if (screen !== 'playing') return;
@@ -251,9 +265,12 @@ export default function CostcoDogs() {
       if (speed >= 9.5) sessionStatsRef.current.speedMaxed = true;
 
       const spawnRate = Math.max(32, 105 - Math.floor(t / 7) * 7);
-      spawnTick.current += 1;
-      if (spawnTick.current >= spawnRate) {
-        spawnTick.current = 0;
+      dogSpawnTick.current += 1;
+      waterSpawnTick.current += 1;
+      condSpawnTick.current += 1;
+      jalaSpawnTick.current += 1;
+      if (dogSpawnTick.current >= spawnRate) {
+        dogSpawnTick.current = 0;
         const burstCount = Math.random() < 0.08 ? 3 : Math.random() < 0.25 ? 2 : 1;
         const newDogs = [];
         const zoneW = (GW - DOG_W - 16) / burstCount;
@@ -268,7 +285,8 @@ export default function CostcoDogs() {
 
       // Water
       const waterRate = Math.max(350, 600 - Math.floor(t / 15) * 20);
-      if (spawnTick.current >= waterRate) {
+      if (waterSpawnTick.current >= waterRate) {
+        waterSpawnTick.current = 0;
         const wx = Math.floor(Math.random() * (GW - WATER_W - 16)) + 8;
         waterRef.current = [...waterRef.current, { id: Math.random(), x: wx, y: -WATER_H - 5 }];
       }
@@ -292,7 +310,8 @@ export default function CostcoDogs() {
 
       // Condiments
       const condRate = Math.max(180, 420 - Math.floor(t / 10) * 15);
-      if (spawnTick.current >= condRate) {
+      if (condSpawnTick.current >= condRate) {
+        condSpawnTick.current = 0;
         const kind = Math.random() < 0.5 ? 'ketchup' : 'mustard';
         const cx = Math.floor(Math.random() * (GW - CONDIMENT_W - 16)) + 8;
         condimentsRef.current = [...condimentsRef.current, { id: Math.random(), x: cx, y: -CONDIMENT_H - 5, kind }];
@@ -304,7 +323,7 @@ export default function CostcoDogs() {
         if (ny + CONDIMENT_H >= BUN_Y + 4 && ny <= BUN_Y + 32 && c.x + CONDIMENT_W > bx + 6 && c.x < bx + effBunW - 6) {
           condBonus += CONDIMENT_PTS;
           sessionStatsRef.current.condis += 1;
-          setPopups(p => [...p.slice(-6), { id: Math.random(), x: c.x + CONDIMENT_W / 2, y: BUN_Y - 30, text: '🍅' }]);
+          setPopups(p => [...p.slice(-6), { id: Math.random(), x: c.x + CONDIMENT_W / 2, y: BUN_Y - 30, text: c.kind === 'ketchup' ? '🍅 +25' : '💛 +25' }]);
           continue;
         }
         if (ny <= GH) survC.push({ ...c, y: ny });
@@ -315,7 +334,8 @@ export default function CostcoDogs() {
 
       // Chili
       const jalaRate = Math.max(400, 700 - Math.floor(t / 15) * 20);
-      if (spawnTick.current >= jalaRate) {
+      if (jalaSpawnTick.current >= jalaRate) {
+        jalaSpawnTick.current = 0;
         const jx = Math.floor(Math.random() * (GW - JALAP_W - 16)) + 8;
         jalaRef.current = [...jalaRef.current, { id: Math.random(), x: jx, y: -JALAP_H - 5 }];
       }
@@ -419,10 +439,29 @@ export default function CostcoDogs() {
         <View style={styles.infoBox}>
           <Text style={styles.greeting}>Hey {username}! 🌭</Text>
           <View style={styles.buttonRow}>
-            <Pressable style={styles.button} onPress={startGame}><Text style={styles.buttonText}>🌭 PLAY</Text></Pressable>
+            <Pressable style={styles.button} onPress={() => setScreen('rules')}><Text style={styles.buttonText}>🌭 PLAY</Text></Pressable>
             <Pressable style={[styles.button, styles.buttonSecondary]} onPress={showBoard}><Text style={styles.buttonText}>🏆 BOARD</Text></Pressable>
             <Pressable style={[styles.button, styles.buttonSecondary]} onPress={() => setScreen('awards')}><Text style={styles.buttonText}>🏅 AWARDS</Text></Pressable>
           </View>
+        </View>
+      </View>
+    );
+  }
+
+  if (screen === 'rules') {
+    return (
+      <View style={styles.screenContainer}>
+        <Text style={styles.title}>📜 HOW TO PLAY</Text>
+        <View style={styles.rulesBox}>
+          <Text style={styles.rulesLine}>Drag your finger inside the arena to move the bun.</Text>
+          <Text style={styles.rulesLine}>Catch hot dogs for points and combos.</Text>
+          <Text style={styles.rulesLine}>Catch ketchup and mustard drops for +25 bonus each.</Text>
+          <Text style={styles.rulesLine}>Avoid chili peppers or you lose lives.</Text>
+          <Text style={styles.rulesLine}>Water drops shrink your bun for a few seconds.</Text>
+        </View>
+        <View style={styles.buttonRow}>
+          <Pressable style={styles.button} onPress={startGame}><Text style={styles.buttonText}>START GAME</Text></Pressable>
+          <Pressable style={[styles.button, styles.buttonSecondary]} onPress={() => setScreen('idle')}><Text style={styles.buttonText}>← BACK</Text></Pressable>
         </View>
       </View>
     );
@@ -436,7 +475,14 @@ export default function CostcoDogs() {
           <View style={styles.livesContainer}>{[0, 1, 2].map(i => <Text key={i} style={{ fontSize: 18, opacity: i < lives ? 1 : 0.2 }}>🌭</Text>)}</View>
           <Text style={styles.stat}>PB: {personalBest}</Text>
         </View>
-        <View style={[styles.arena, shake && styles.arenaShake]}>
+        <View
+          style={[styles.arena, shake && styles.arenaShake]}
+          onLayout={(e) => setArenaWidth(e.nativeEvent.layout.width)}
+          onStartShouldSetResponder={() => true}
+          onMoveShouldSetResponder={() => true}
+          onResponderGrant={(e) => moveBunToArenaX(e.nativeEvent.locationX)}
+          onResponderMove={(e) => moveBunToArenaX(e.nativeEvent.locationX)}
+        >
           <Svg width="100%" height="100%" viewBox={`0 0 ${GW} ${GH}`}>
             {splats.map(s => <Splat key={s.id} x={s.x} y={s.y} />)}
             {renderDogs.map(d => <HotDog key={d.id} x={d.x} y={d.y} />)}
@@ -495,6 +541,8 @@ const styles = StyleSheet.create({
   nameInput: { borderColor: '#7a3800', borderWidth: 2, borderRadius: 10, padding: 12, fontSize: 18, color: '#f5d020', backgroundColor: '#0d0500', marginBottom: 12, textAlign: 'center' },
   errorText: { color: '#ff6644', fontSize: 13, marginBottom: 12, textAlign: 'center' },
   infoBox: { width: '90%', backgroundColor: '#1e0c00', borderColor: '#7a3800', borderWidth: 2, borderRadius: 18, padding: 20 },
+  rulesBox: { width: '92%', backgroundColor: '#1e0c00', borderColor: '#7a3800', borderWidth: 2, borderRadius: 18, padding: 18, marginBottom: 12 },
+  rulesLine: { fontSize: 17, color: '#f5d020', marginBottom: 10, lineHeight: 24 },
   greeting: { fontSize: 22, color: '#f5d020', marginBottom: 12, textAlign: 'center' },
   button: { backgroundColor: '#f5d020', paddingVertical: 12, paddingHorizontal: 24, borderRadius: 50, alignItems: 'center', marginVertical: 8 },
   buttonSecondary: { backgroundColor: '#2a1000', borderColor: '#5a2800', borderWidth: 2 },
