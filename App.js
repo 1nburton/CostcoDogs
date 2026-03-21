@@ -284,9 +284,9 @@ export default function CostcoDogs() {
   }, []);
 
   const renderFramed = useCallback((content) => (
-    <View style={styles.appShell}>
-      <SafeAreaView style={styles.safeArea}>{content}</SafeAreaView>
-    </View>
+    <SafeAreaView style={styles.appOuter}>
+      <View style={styles.appShell}>{content}</View>
+    </SafeAreaView>
   ), []);
 
   useEffect(() => {
@@ -475,10 +475,10 @@ export default function CostcoDogs() {
         <Text style={styles.title}>🌭 COSTCO DOGS</Text>
         <View style={styles.infoBox}>
           <Text style={styles.greeting}>Hey {username}! 🌭</Text>
-          <View style={styles.buttonRow}>
-            <Pressable style={styles.button} onPress={() => setScreen('rules')}><Text style={styles.buttonText}>🌭 PLAY</Text></Pressable>
-            <Pressable style={[styles.button, styles.buttonSecondary]} onPress={showBoard}><Text style={styles.buttonText}>🏆 BOARD</Text></Pressable>
-            <Pressable style={[styles.button, styles.buttonSecondary]} onPress={() => setScreen('awards')}><Text style={styles.buttonText}>🏅 AWARDS</Text></Pressable>
+          <View style={styles.buttonColumn}>
+            <Pressable style={[styles.button, styles.buttonFull]} onPress={() => setScreen('rules')}><Text style={styles.buttonText}>🌭 PLAY</Text></Pressable>
+            <Pressable style={[styles.button, styles.buttonSecondary, styles.buttonFull]} onPress={showBoard}><Text style={styles.buttonText}>🏆 BOARD</Text></Pressable>
+            <Pressable style={[styles.button, styles.buttonSecondary, styles.buttonFull]} onPress={() => setScreen('awards')}><Text style={styles.buttonText}>🏅 AWARDS</Text></Pressable>
           </View>
         </View>
       </View>
@@ -577,8 +577,8 @@ export default function CostcoDogs() {
 }
 
 const styles = StyleSheet.create({
-  appShell: { flex: 1, backgroundColor: '#120800', borderColor: '#7a3800', borderWidth: 4 },
-  safeArea: { flex: 1, backgroundColor: '#120800' },
+  appOuter: { flex: 1, backgroundColor: '#120800' },
+  appShell: { flex: 1, margin: 6, borderColor: '#7a3800', borderWidth: 3, borderRadius: 14, overflow: 'hidden', backgroundColor: '#120800' },
   screenContainer: { flex: 1, backgroundColor: '#120800', alignItems: 'center', justifyContent: 'center', padding: 16 },
   title: { fontSize: 40, fontWeight: 'bold', color: '#f5d020', marginBottom: 20 },
   nameBox: { width: '90%', backgroundColor: '#1e0c00', borderColor: '#7a3800', borderWidth: 2, borderRadius: 18, padding: 28 },
@@ -595,11 +595,13 @@ const styles = StyleSheet.create({
   buttonSecondary: { backgroundColor: '#2a1000', borderColor: '#5a2800', borderWidth: 2 },
   buttonText: { color: '#1a0a00', fontSize: 16, fontWeight: 'bold' },
   buttonRow: { flexDirection: 'row', justifyContent: 'center', gap: 8, flexWrap: 'wrap' },
-  gameContainer: { flex: 1, backgroundColor: '#120800', alignItems: 'center', justifyContent: 'flex-start', padding: 8 },
+  buttonColumn: { flexDirection: 'column', alignItems: 'stretch', width: '100%', gap: 4 },
+  buttonFull: { width: '100%' },
+  gameContainer: { flex: 1, backgroundColor: '#120800', alignItems: 'center', justifyContent: 'flex-start', padding: 6 },
   statsBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '95%', backgroundColor: '#1e0c00', borderColor: '#5a2800', borderWidth: 2, borderRadius: 12, padding: 8, marginBottom: 8 },
   stat: { color: '#f5d020', fontSize: 16, fontWeight: 'bold' },
   livesContainer: { flexDirection: 'row', gap: 4 },
-  arena: { width: '95%', aspectRatio: GW / GH, backgroundColor: '#0a0300', borderColor: '#5a2800', borderWidth: 3, borderRadius: 16, overflow: 'hidden' },
+  arena: { flex: 1, width: '100%', backgroundColor: '#0a0300', borderColor: '#5a2800', borderWidth: 3, borderRadius: 16, overflow: 'hidden' },
   arenaShake: { transform: [{ translateX: 7 }] },
   screamWrap: { position: 'absolute', top: 72, left: 0, right: 0, alignItems: 'center' },
   screamText: { fontSize: 30, fontWeight: 'bold', color: '#f5d020', backgroundColor: 'rgba(10,3,0,0.85)', borderColor: '#f5d020', borderWidth: 2, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 12 },
