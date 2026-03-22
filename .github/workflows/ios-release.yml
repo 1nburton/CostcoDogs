@@ -1,0 +1,137 @@
+name: iOS Release (EAS)
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'ios-v*'
+
+jobs:
+  ios-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      EXPO_ASC_APP_ID: ${{ secrets.EXPO_ASC_APP_ID }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Validate required secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${EXPO_TOKEN:-}" ]; then
+            echo "Missing required secret: EXPO_TOKEN"
+            exit 1
+          fi
+          if [ -z "${EXPO_ASC_APP_ID:-}" ]; then
+            echo "Missing required secret: EXPO_ASC_APP_ID"
+            exit 1
+          fi
+
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: Lint project
+        run: npm run lint
+
+      - name: Inject submit app id into eas.json
+        shell: bash
+        run: |
+          set -euo pipefail
+          node -e "const fs=require('fs');const p='eas.json';const j=JSON.parse(fs.readFileSync(p,'utf8'));j.submit=j.submit||{};j.submit.production=j.submit.production||{};j.submit.production.ios=j.submit.production.ios||{};j.submit.production.ios.ascAppId=process.env.EXPO_ASC_APP_ID;fs.writeFileSync(p,JSON.stringify(j,null,2));"
+
+      - name: EAS build iOS
+        shell: bash
+        run: |
+          set -euo pipefail
+          max_attempts=4
+          attempt=1
+
+          while [ "$attempt" -le "$max_attempts" ]; do
+            echo "Build attempt $attempt/$max_attempts"
+            build_log=$(mktemp)
+
+            if npx --yes eas-cli@latest build --platform ios --profile production --non-interactive --wait 2>&1 | tee "$build_log"; then
+              echo "EAS build completed successfully."
+              rm -f "$build_log"
+              exit 0
+            fi
+
+            if grep -Eqi "used its iOS builds from the Free plan|No iOS builds left|build limit|settings/billing|will reset in" "$build_log"; then
+              echo "EAS iOS build quota reached for this Expo account."
+              echo "Action required: wait for reset date shown in logs or upgrade the Expo plan."
+              rm -f "$build_log"
+              exit 1
+            fi
+
+            if grep -Eqi "Build request failed|build command failed|GraphQL request failed|Service Unavailable|429|502|503|504|timeout|timed out|ECONNRESET|ENOTFOUND|socket hang up" "$build_log"; then
+              if [ "$attempt" -lt "$max_attempts" ]; then
+                sleep_seconds=$((attempt * 45))
+                echo "Transient build API error detected. Retrying in ${sleep_seconds}s..."
+                rm -f "$build_log"
+                sleep "$sleep_seconds"
+                attempt=$((attempt + 1))
+                continue
+              fi
+            fi
+
+            echo "EAS build failed with a non-retryable error or retries exhausted."
+            rm -f "$build_log"
+            exit 1
+          done
+
+          echo "EAS build failed after $max_attempts attempts."
+          exit 1
+
+      - name: Submit to App Store Connect
+        shell: bash
+        run: |
+          set -euo pipefail
+          max_attempts=5
+          attempt=1
+
+          while [ "$attempt" -le "$max_attempts" ]; do
+            echo "Submit attempt $attempt/$max_attempts"
+            submit_log=$(mktemp)
+
+            if npx --yes eas-cli@latest submit --platform ios --latest --profile production --non-interactive 2>&1 | tee "$submit_log"; then
+              echo "EAS submit scheduled successfully."
+              rm -f "$submit_log"
+              exit 0
+            fi
+
+            if grep -Eqi "already submitted this build|CFBundleVersion" "$submit_log"; then
+              echo "This build number has already been submitted."
+              echo "Run a new iOS build so EAS remote auto-increment produces a new build number, then submit again."
+              rm -f "$submit_log"
+              exit 1
+            fi
+
+            if grep -Eqi "Service Unavailable|GraphQL request failed|429|502|503|504|timeout|timed out|ECONNRESET|ENOTFOUND|socket hang up" "$submit_log"; then
+              if [ "$attempt" -lt "$max_attempts" ]; then
+                sleep_seconds=$((attempt * 30))
+                echo "Transient submit error detected. Retrying in ${sleep_seconds}s..."
+                rm -f "$submit_log"
+                sleep "$sleep_seconds"
+                attempt=$((attempt + 1))
+                continue
+              fi
+            fi
+
+            echo "EAS submit failed with a non-retryable error or retries exhausted."
+            rm -f "$submit_log"
+            exit 1
+          done
+
+          echo "EAS submit failed after $max_attempts attempts."
+          exit 1
