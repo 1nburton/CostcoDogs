@@ -23,6 +23,7 @@
   "devDependencies": {
     "@babel/core": "^7.22.9",
     "eslint": "^8.57.0",
-    "eslint-plugin-react": "^7.33.3"
+    "eslint-plugin-react": "^7.33.3",
+    "sharp": "^0.34.5"
   }
 }
