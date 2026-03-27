@@ -15,6 +15,9 @@ jobs:
     env:
       EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
       EXPO_ASC_APP_ID: ${{ secrets.EXPO_ASC_APP_ID }}
+      EXPO_ASC_KEY_ID: ${{ secrets.EXPO_ASC_KEY_ID }}
+      EXPO_ASC_ISSUER_ID: ${{ secrets.EXPO_ASC_ISSUER_ID }}
+      EXPO_ASC_API_KEY_PATH: ${{ github.workspace }}/AuthKey.p8
 
     steps:
       - name: Checkout repository
@@ -38,6 +41,25 @@ jobs:
             echo "Missing required secret: EXPO_ASC_APP_ID"
             exit 1
           fi
+          if [ -z "${EXPO_ASC_KEY_ID:-}" ]; then
+            echo "Missing required secret: EXPO_ASC_KEY_ID"
+            exit 1
+          fi
+          if [ -z "${EXPO_ASC_ISSUER_ID:-}" ]; then
+            echo "Missing required secret: EXPO_ASC_ISSUER_ID"
+            exit 1
+          fi
+          if [ -z "${{ secrets.EXPO_ASC_API_KEY_BASE64 }}" ]; then
+            echo "Missing required secret: EXPO_ASC_API_KEY_BASE64"
+            exit 1
+          fi
+
+      - name: Write App Store Connect API key
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "${{ secrets.EXPO_ASC_API_KEY_BASE64 }}" | base64 --decode > "$EXPO_ASC_API_KEY_PATH"
+          chmod 600 "$EXPO_ASC_API_KEY_PATH"
 
       - name: Install dependencies
         run: npm install --legacy-peer-deps
