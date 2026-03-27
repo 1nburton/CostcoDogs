@@ -62,8 +62,7 @@ jobs:
 
           # Accept either raw .p8 contents or a base64-encoded .p8 payload.
           if printf '%s' "$key_secret" | grep -q "BEGIN PRIVATE KEY"; then
-            printf '%s' "$key_secret" | sed 's/\\n/\
-/g' > "$EXPO_ASC_API_KEY_PATH"
+            printf '%s' "$key_secret" | perl -pe 's/\\n/\n/g' > "$EXPO_ASC_API_KEY_PATH"
           else
             printf '%s' "$key_secret" | tr -d '\r\n ' | base64 --decode > "$EXPO_ASC_API_KEY_PATH"
           fi
