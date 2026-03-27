@@ -58,7 +58,27 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          echo "${{ secrets.EXPO_ASC_API_KEY_BASE64 }}" | base64 --decode > "$EXPO_ASC_API_KEY_PATH"
+          key_secret='${{ secrets.EXPO_ASC_API_KEY_BASE64 }}'
+
+          # Accept either raw .p8 contents or a base64-encoded .p8 payload.
+          if printf '%s' "$key_secret" | grep -q "BEGIN PRIVATE KEY"; then
+            printf '%s' "$key_secret" | sed 's/\\n/\
+/g' > "$EXPO_ASC_API_KEY_PATH"
+          else
+            printf '%s' "$key_secret" | tr -d '\r\n ' | base64 --decode > "$EXPO_ASC_API_KEY_PATH"
+          fi
+
+          if ! grep -q "BEGIN PRIVATE KEY" "$EXPO_ASC_API_KEY_PATH"; then
+            echo "Invalid App Store Connect key format: expected PKCS#8 PEM (.p8)."
+            exit 1
+          fi
+
+          # Validate key parses as PEM/PKCS#8 before submit.
+          openssl pkey -in "$EXPO_ASC_API_KEY_PATH" -noout >/dev/null 2>&1 || {
+            echo "Invalid private key: unable to parse PKCS#8 key content."
+            exit 1
+          }
+
           chmod 600 "$EXPO_ASC_API_KEY_PATH"
 
       - name: Install dependencies
