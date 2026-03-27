@@ -127,7 +127,7 @@ jobs:
             echo "Submit attempt $attempt/$max_attempts"
             submit_log=$(mktemp)
 
-            if npx --yes eas-cli@latest submit --platform ios --latest --profile production --non-interactive 2>&1 | tee "$submit_log"; then
+            if npx --yes eas-cli@latest submit --platform ios --latest --profile production --non-interactive --verbose --verbose-fastlane 2>&1 | tee "$submit_log"; then
               echo "EAS submit scheduled successfully."
               rm -f "$submit_log"
               exit 0
