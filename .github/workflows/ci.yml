@@ -12,12 +12,13 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
-          node-version: '20'
+          node-version: '22'
+          cache: npm
 
       - name: Install dependencies
         run: npm install
@@ -28,5 +29,5 @@ jobs:
       - name: Run tests
         run: npm test || true
 
-      - name: Build Expo web
-        run: npm run web
+      - name: Build Expo web bundle
+        run: npx expo export --platform web

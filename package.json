@@ -11,6 +11,7 @@
     "lint": "npx eslint@8 . --ext .js,.jsx --max-warnings=0"
   },
   "dependencies": {
+    "@expo/metro-runtime": "~4.0.1",
     "@react-native-async-storage/async-storage": "^1.24.0",
     "expo": "^52.0.0",
     "expo-status-bar": "~2.0.1",

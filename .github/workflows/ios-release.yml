@@ -18,12 +18,13 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
-          node-version: '20'
+          node-version: '22'
+          cache: npm
 
       - name: Validate required secrets
         shell: bash
@@ -67,7 +68,7 @@ jobs:
               exit 0
             fi
 
-            if grep -Eqi "used its iOS builds from the Free plan|No iOS builds left|build limit|settings/billing|will reset in" "$build_log"; then
+            if grep -Eqi "used its iOS builds from the Free plan|No iOS builds left|will reset in" "$build_log"; then
               echo "EAS iOS build quota reached for this Expo account."
               echo "Action required: wait for reset date shown in logs or upgrade the Expo plan."
               rm -f "$build_log"
