@@ -71,7 +71,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          node -e "const fs=require('fs');const p='eas.json';const j=JSON.parse(fs.readFileSync(p,'utf8'));j.submit=j.submit||{};j.submit.production=j.submit.production||{};j.submit.production.ios=j.submit.production.ios||{};j.submit.production.ios.ascAppId=process.env.EXPO_ASC_APP_ID;fs.writeFileSync(p,JSON.stringify(j,null,2));"
+          node -e "const fs=require('fs');const p='eas.json';const j=JSON.parse(fs.readFileSync(p,'utf8'));j.submit=j.submit||{};j.submit.production=j.submit.production||{};j.submit.production.ios=j.submit.production.ios||{};j.submit.production.ios.ascAppId=process.env.EXPO_ASC_APP_ID;j.submit.production.ios.ascApiKeyPath=process.env.EXPO_ASC_API_KEY_PATH;j.submit.production.ios.ascApiKeyId=process.env.EXPO_ASC_KEY_ID;j.submit.production.ios.ascApiKeyIssuerId=process.env.EXPO_ASC_ISSUER_ID;fs.writeFileSync(p,JSON.stringify(j,null,2));"
 
       - name: EAS build iOS
         shell: bash
@@ -127,10 +127,7 @@ jobs:
             echo "Submit attempt $attempt/$max_attempts"
             submit_log=$(mktemp)
 
-            if npx --yes eas-cli@latest submit --platform ios --latest --profile production --non-interactive \
-              --asc-api-key-path "$EXPO_ASC_API_KEY_PATH" \
-              --asc-api-key-id "$EXPO_ASC_KEY_ID" \
-              --asc-api-issuer-id "$EXPO_ASC_ISSUER_ID" 2>&1 | tee "$submit_log"; then
+            if npx --yes eas-cli@latest submit --platform ios --latest --profile production --non-interactive 2>&1 | tee "$submit_log"; then
               echo "EAS submit scheduled successfully."
               rm -f "$submit_log"
               exit 0
