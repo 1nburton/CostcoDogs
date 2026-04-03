@@ -23,8 +23,7 @@ const JALAP_SPEED = 9;
 const JALAP_W = 20;
 const JALAP_H = 26;
 const STEAM_DURATION = 3000;
-const ROUND_DURATION = 90;
-const TOTAL_ROUNDS = 10;
+const LIVES = 3;
 
 const ACHIEVEMENTS = [
   { id: 'first_catch', name: 'Welcome to Costco', desc: 'Catch your very first hot dog', check: s => s.caught >= 1 },
@@ -172,8 +171,7 @@ export default function CostcoDogs() {
   const [renderDogs, setRenderDogs] = useState([]);
   const [splats, setSplats] = useState([]);
   const [score, setScore] = useState(0);
-  const [round, setRound] = useState(1);
-  const [roundTimeLeft, setRoundTimeLeft] = useState(ROUND_DURATION);
+  const [lives, setLives] = useState(LIVES);
   const [combo, setCombo] = useState(0);
   const [shake, setShake] = useState(false);
   const [popups, setPopups] = useState([]);
@@ -194,7 +192,7 @@ export default function CostcoDogs() {
   const shrinkTimerRef = useRef(null); const jalaRef = useRef([]); const steamTimerRef = useRef(null);
   const screamTimerRef = useRef(null); const popupTimersRef = useRef([]);
   const unlockedAchsRef = useRef(new Set()); const sessionStatsRef = useRef({ caught: 0, maxCombo: 0, condis: 0, chiliDodged: 0, waterHits: 0, missed: 0, speedMaxed: false, score: 0 });
-  const bunXRef = useRef(GW / 2 - BUN_W / 2); const scoreRef = useRef(0); const roundRef = useRef(1); const roundTimeRef = useRef(ROUND_DURATION); const lastDisplayedTimeRef = useRef(ROUND_DURATION); const comboRef = useRef(0);
+  const bunXRef = useRef(GW / 2 - BUN_W / 2); const scoreRef = useRef(0); const livesRef = useRef(LIVES); const comboRef = useRef(0);
   const dogSpawnTick = useRef(0); const waterSpawnTick = useRef(0); const condSpawnTick = useRef(0); const jalaSpawnTick = useRef(0);
   const elapsedRef = useRef(0); const lastTimeRef = useRef(null); const usernameRef = useRef(''); const screenRef = useRef('auth');
 
@@ -327,10 +325,10 @@ export default function CostcoDogs() {
     setBunShrunk(false); bunShrunkRef.current = false;
     if (shrinkTimerRef.current) clearTimeout(shrinkTimerRef.current);
     if (steamTimerRef.current) clearTimeout(steamTimerRef.current);
-    scoreRef.current = 0; comboRef.current = 0; roundRef.current = 1; roundTimeRef.current = ROUND_DURATION; lastDisplayedTimeRef.current = ROUND_DURATION;
+    scoreRef.current = 0; comboRef.current = 0; livesRef.current = LIVES;
     dogSpawnTick.current = 0; waterSpawnTick.current = 0; condSpawnTick.current = 0; jalaSpawnTick.current = 0;
     elapsedRef.current = 0; lastTimeRef.current = null;
-    setRenderDogs([]); setSplats([]); setScore(0); setRound(1); setRoundTimeLeft(ROUND_DURATION); setCombo(0); setPopups([]); setScreamText('');
+    setRenderDogs([]); setSplats([]); setScore(0); setLives(LIVES); setCombo(0); setPopups([]); setScreamText('');
     setSteamActive(false);
     setBunX(GW / 2 - BUN_W / 2); bunXRef.current = GW / 2 - BUN_W / 2;
     sessionStatsRef.current = { caught: 0, maxCombo: 0, condis: 0, chiliDodged: 0, waterHits: 0, missed: 0, speedMaxed: false, score: 0 };
@@ -379,46 +377,10 @@ export default function CostcoDogs() {
       const dt = (now - lastTimeRef.current) / 1000; const t = (elapsedRef.current += dt);
       lastTimeRef.current = now;
 
-      // Round timer
-      roundTimeRef.current -= dt;
-      const displaySec = Math.ceil(Math.max(0, roundTimeRef.current));
-      if (displaySec !== lastDisplayedTimeRef.current) {
-        lastDisplayedTimeRef.current = displaySec;
-        setRoundTimeLeft(displaySec);
-      }
-      if (roundTimeRef.current <= 0) {
-        if (roundRef.current >= TOTAL_ROUNDS) {
-          setScreen('dead');
-          saveScore(scoreRef.current);
-          const stats = { ...sessionStatsRef.current, score: scoreRef.current };
-          const newAch = [];
-          for (const a of ACHIEVEMENTS) {
-            if (!unlockedAchsRef.current.has(a.id) && a.check(stats)) {
-              unlockedAchsRef.current.add(a.id);
-              newAch.push(a);
-            }
-          }
-          if (newAch.length) {
-            setUnlockedAchs(new Set(unlockedAchsRef.current));
-            storageLargeSet('costco:achievements', Array.from(unlockedAchsRef.current));
-          }
-          return;
-        }
-        roundRef.current += 1;
-        setRound(roundRef.current);
-        roundTimeRef.current = ROUND_DURATION;
-        lastDisplayedTimeRef.current = ROUND_DURATION;
-        setRoundTimeLeft(ROUND_DURATION);
-        elapsedRef.current = 0;
-        dogsRef.current = []; condimentsRef.current = []; waterRef.current = []; jalaRef.current = [];
-        setRenderDogs([]); setRenderCondiments([]); setRenderWater([]); setRenderJala([]);
-        scream(`ROUND ${roundRef.current}!`);
-      }
-
-      const speed = Math.min(BASE_SPEED + (roundRef.current - 1) * 0.67, 9.5);
+      const speed = Math.min(BASE_SPEED + t * 0.025, 9.5);
       if (speed >= 9.5) sessionStatsRef.current.speedMaxed = true;
 
-      const spawnRate = Math.max(32, 105 - (roundRef.current - 1) * 8 - Math.floor(t / 7) * 3);
+      const spawnRate = Math.max(32, 105 - Math.floor(t / 7) * 3);
       dogSpawnTick.current += 1;
       waterSpawnTick.current += 1;
       condSpawnTick.current += 1;
@@ -537,12 +499,29 @@ export default function CostcoDogs() {
       if (missed > 0) {
         sessionStatsRef.current.missed += missed;
         comboRef.current = 0;
-        scoreRef.current = Math.max(0, scoreRef.current - 10 * missed);
-        setScore(scoreRef.current);
         setCombo(0);
+        livesRef.current = Math.max(0, livesRef.current - missed);
+        setLives(livesRef.current);
         if (splatsList.length) setSplats(prev => [...prev.slice(-7), ...splatsList]);
         setShake(true);
         setTimeout(() => setShake(false), 380);
+        if (livesRef.current <= 0) {
+          setScreen('dead');
+          saveScore(scoreRef.current);
+          const stats = { ...sessionStatsRef.current, score: scoreRef.current };
+          const newAch = [];
+          for (const a of ACHIEVEMENTS) {
+            if (!unlockedAchsRef.current.has(a.id) && a.check(stats)) {
+              unlockedAchsRef.current.add(a.id);
+              newAch.push(a);
+            }
+          }
+          if (newAch.length) {
+            setUnlockedAchs(new Set(unlockedAchsRef.current));
+            storageLargeSet('costco:achievements', Array.from(unlockedAchsRef.current));
+          }
+          return;
+        }
       }
       setRenderDogs([...survD]);
       animFrameId = requestAnimationFrame(gameLoop);
@@ -606,7 +585,7 @@ export default function CostcoDogs() {
         <View style={styles.rulesBox}>
           <View style={styles.ruleRow}><Text style={styles.ruleIcon}>👆</Text><Text style={styles.ruleText}>Drag your finger to move the bun.</Text></View>
           <View style={styles.ruleRow}><Text style={styles.ruleText}>Catch hot dogs for points and combos. Missing one costs 10 points!</Text></View>
-          <View style={styles.ruleRow}><Text style={styles.ruleIcon}>🎯</Text><Text style={styles.ruleText}>10 rounds, 90 seconds each — Round 1 is easy, Round 10 is the hardest.</Text></View>
+          <View style={styles.ruleRow}><Text style={styles.ruleIcon}>🎯</Text><Text style={styles.ruleText}>You get 3 hot dog lives 🌭🌭🌭 — miss a dog, lose a life. Speed increases over time!</Text></View>
           <View style={styles.ruleRow}><Svg width="24" height="32" viewBox="0 0 24 32"><Rect x="4" y="2" width="16" height="24" rx="3" fill="#cc1a1a" /><Rect x="6" y="6" width="12" height="8" rx="1" fill="#f7b1b1" opacity="0.9" /><Ellipse cx="12" cy="28" rx="8" ry="3" fill="#a82020" /><Path d="M 10 1 L 14 1 L 14 2 L 10 2 Z" fill="#3b2200" /></Svg><Text style={styles.ruleText}>Ketchup bottle gives +25 bonus points.</Text></View>
           <View style={styles.ruleRow}><Svg width="24" height="32" viewBox="0 0 24 32"><Rect x="4" y="2" width="16" height="24" rx="3" fill="#f5c800" /><Rect x="6" y="6" width="12" height="8" rx="1" fill="#fff1a8" opacity="0.9" /><Ellipse cx="12" cy="28" rx="8" ry="3" fill="#b8860b" /><Path d="M 10 1 L 14 1 L 14 2 L 10 2 Z" fill="#3b2200" /></Svg><Text style={styles.ruleText}>Mustard bottle gives +25 bonus points.</Text></View>
           <View style={styles.ruleRow}><Text style={styles.ruleIcon}>💧</Text><Text style={styles.ruleText}>Water shrinks your bun for a few seconds.</Text></View>
@@ -625,7 +604,7 @@ export default function CostcoDogs() {
       <View style={styles.gameContainer}>
         <View style={styles.statsBar}>
           <Text style={styles.stat}>⬆️ {score}</Text>
-          <Text style={styles.stat}>R{round}/{TOTAL_ROUNDS} · {roundTimeLeft}s</Text>
+          <Text style={styles.stat}>{'🌭'.repeat(lives)}</Text>
           <Text style={styles.stat}>PB: {personalBest}</Text>
         </View>
         <View

@@ -10,6 +10,11 @@
         "credentialsSource": "remote",
         "image": "latest"
       }
+    },
+    "local": {
+      "ios": {
+        "credentialsSource": "local"
+      }
     }
   },
   "submit": {

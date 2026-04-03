@@ -3,3 +3,5 @@ node_modules/
 web-build/
 *.log
 .DS_Store
+ios/build/
+ios/Pods/
